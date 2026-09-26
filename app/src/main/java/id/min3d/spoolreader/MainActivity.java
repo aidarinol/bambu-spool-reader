@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -84,7 +85,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         String type;
         List<StockStore.Item> items;
         TextView subtotal;
+        LinearLayout block; // header + rows, moved as one unit when types re-sort
+        LinearLayout rows;  // colour rows, re-sorted inside the block
     }
+
+    private LinearLayout stockList;
+    private static final long MOVE_MS = 450;
 
     // ---------------- lifecycle ----------------
 
@@ -487,6 +493,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     }
 
     private void renderStockList(LinearLayout list, LinkedHashMap<String, List<StockStore.Item>> groups) {
+        stockList = list;
         list.removeAllViews();
         groupViews.clear();
         String f = stockFilter.toLowerCase(Locale.ROOT);
@@ -503,6 +510,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
 
             final LinearLayout rows = new LinearLayout(this);
             rows.setOrientation(LinearLayout.VERTICAL);
+            gv.rows = rows;
             int n = 0;
             for (final StockStore.Item it : g.getValue()) {
                 if (searching && !typeHit && !it.name.toLowerCase(Locale.ROOT).contains(f)) continue;
@@ -549,10 +557,14 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
                 else expanded.remove(type);
             });
 
-            LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            hp.setMargins(0, dp(8), 0, 0);
-            list.addView(head, hp);
-            list.addView(rows);
+            LinearLayout block = new LinearLayout(this);
+            block.setOrientation(LinearLayout.VERTICAL);
+            block.setPadding(0, dp(8), 0, 0);
+            block.addView(head);
+            block.addView(rows);
+            block.setTag(gv);
+            gv.block = block;
+            list.addView(block);
         }
         if (shown == 0) {
             TextView none = text("No matching filament.", 14, MUTED, false);
@@ -563,10 +575,11 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     }
 
     private View stockRow(final StockStore.Item it, final GroupView gv) {
-        LinearLayout r = new LinearLayout(this);
+        final LinearLayout r = new LinearLayout(this);
         r.setOrientation(LinearLayout.HORIZONTAL);
         r.setGravity(Gravity.CENTER_VERTICAL);
         r.setPadding(dp(4), dp(8), 0, dp(8));
+        r.setTag(it);
         View sw = swatches(it.colors, dp(22), dp(5));
         r.addView(sw, new LinearLayout.LayoutParams(dp(22), dp(22)));
         LinearLayout mid = new LinearLayout(this);
@@ -592,9 +605,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             name.setTextColor(it.qty > 0 ? FG : MUTED);
             updateSubtotal(gv);
             updateSummary();
+            resortAnimated(gv, r);
         };
         View.OnClickListener step = v -> {
+            int before = it.qty;
             it.qty = Math.max(0, it.qty + (v == plus ? 1 : -1));
+            if (it.qty == before) return;
             stock.set(it.key, it.qty);
             refresh.run();
         };
@@ -606,8 +622,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
 
     private void updateSubtotal(GroupView gv) {
         if (gv.subtotal == null) return;
-        int sum = 0;
-        for (StockStore.Item it : gv.items) sum += it.qty;
+        int sum = StockStore.total(gv.items);
         gv.subtotal.setText(sum + " spool(s)");
         gv.subtotal.setTextColor(sum > 0 ? ACCENT : MUTED);
     }
@@ -622,6 +637,119 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
                     colours++;
                 }
         summaryView.setText(total + " spool(s) in stock across " + colours + " colour(s)");
+    }
+
+    // ---------------- live re-sort with smooth movement (FLIP) ----------------
+
+    /** Re-sorts the colours inside the changed type and the types in the list, animating every move. */
+    private void resortAnimated(GroupView gv, final View changedRow) {
+        Collections.sort(gv.items, StockStore.ITEM_ORDER);
+
+        // colours inside this type
+        List<View> rowViews = children(gv.rows);
+        Collections.sort(rowViews, new java.util.Comparator<View>() {
+            @Override
+            public int compare(View a, View b) {
+                return StockStore.ITEM_ORDER.compare((StockStore.Item) a.getTag(), (StockStore.Item) b.getTag());
+            }
+        });
+        boolean rowsMoved = flipReorder(gv.rows, rowViews);
+
+        // types in the list
+        boolean blocksMoved = false;
+        if (stockList != null) {
+            List<View> blocks = new ArrayList<>();
+            List<View> tail = new ArrayList<>();
+            for (View v : children(stockList)) {
+                if (v.getTag() instanceof GroupView) blocks.add(v);
+                else tail.add(v);
+            }
+            Collections.sort(blocks, new java.util.Comparator<View>() {
+                @Override
+                public int compare(View a, View b) {
+                    GroupView ga = (GroupView) a.getTag(), gb = (GroupView) b.getTag();
+                    return StockStore.compareTypes(ga.type, StockStore.total(ga.items), gb.type, StockStore.total(gb.items));
+                }
+            });
+            blocks.addAll(tail);
+            blocksMoved = flipReorder(stockList, blocks);
+        }
+
+        flash(changedRow);
+        if (rowsMoved || blocksMoved) {
+            // after the slide, make sure the row you touched is still on screen
+            scroll.postDelayed(() -> keepVisible(changedRow), MOVE_MS + 30);
+        }
+    }
+
+    private static List<View> children(LinearLayout parent) {
+        List<View> out = new ArrayList<>();
+        for (int i = 0; i < parent.getChildCount(); i++) out.add(parent.getChildAt(i));
+        return out;
+    }
+
+    /**
+     * FLIP: remember where each child is now (including any running slide), put the children in the new
+     * order, then offset each one back to where it was and slide it to its new place.
+     * @return true if the order actually changed
+     */
+    private boolean flipReorder(final LinearLayout parent, List<View> newOrder) {
+        boolean changed = false;
+        for (int i = 0; i < newOrder.size(); i++) if (parent.getChildAt(i) != newOrder.get(i)) changed = true;
+        if (!changed) return false;
+
+        final java.util.Map<View, Float> oldY = new java.util.HashMap<>();
+        for (View v : newOrder) {
+            v.animate().cancel();
+            oldY.put(v, v.getTop() + v.getTranslationY());
+        }
+        parent.removeAllViews();
+        for (View v : newOrder) parent.addView(v);
+
+        parent.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                parent.getViewTreeObserver().removeOnPreDrawListener(this);
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    View v = parent.getChildAt(i);
+                    Float from = oldY.get(v);
+                    if (from == null) continue;
+                    float dy = from - v.getTop();
+                    if (Math.abs(dy) < 1f) {
+                        v.setTranslationY(0f);
+                        continue;
+                    }
+                    v.setTranslationY(dy);
+                    v.animate().translationY(0f).setDuration(MOVE_MS)
+                            .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+                }
+                return true;
+            }
+        });
+        return true;
+    }
+
+    /** Brief green glow on the row that was changed, fading out. */
+    private void flash(View row) {
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(8));
+        g.setColor(Color.argb(70, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT)));
+        row.setBackground(g);
+        android.animation.ObjectAnimator a = android.animation.ObjectAnimator.ofInt(g, "alpha", 255, 0);
+        a.setStartDelay(MOVE_MS);
+        a.setDuration(700);
+        a.start();
+    }
+
+    private void keepVisible(View row) {
+        int[] rowLoc = new int[2], scrollLoc = new int[2];
+        row.getLocationOnScreen(rowLoc);
+        scroll.getLocationOnScreen(scrollLoc);
+        int top = rowLoc[1] - scrollLoc[1];
+        int bottom = top + row.getHeight();
+        int margin = dp(24);
+        if (top < margin) scroll.smoothScrollBy(0, top - margin);
+        else if (bottom > scroll.getHeight() - margin) scroll.smoothScrollBy(0, bottom - scroll.getHeight() + margin);
     }
 
     private void editQty(final StockStore.Item it, final Runnable refresh) {

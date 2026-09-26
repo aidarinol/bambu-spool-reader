@@ -89,37 +89,46 @@ public final class StockStore {
             add(groups, new Item(e.getKey(), f[0], f[1], code, cols, get(e.getKey())));
         }
         final Map<String, Integer> totals = new HashMap<>();
-        for (Map.Entry<String, List<Item>> e : groups.entrySet()) {
-            int sum = 0;
-            for (Item it : e.getValue()) sum += it.qty;
-            totals.put(e.getKey(), sum);
-        }
+        for (Map.Entry<String, List<Item>> e : groups.entrySet()) totals.put(e.getKey(), total(e.getValue()));
         List<String> types = new ArrayList<>(groups.keySet());
-        // Most spools first; ties (incl. all the 0-spool types) keep the Min3D order, then A-Z.
         Collections.sort(types, new Comparator<String>() {
             @Override
             public int compare(String a, String b) {
-                int ta = totals.get(a), tb = totals.get(b);
-                if (ta != tb) return tb - ta;
-                int ra = Compat.rank(a), rb = Compat.rank(b);
-                if (ra != rb) return ra - rb;
-                return a.compareToIgnoreCase(b);
+                return compareTypes(a, totals.get(a), b, totals.get(b));
             }
         });
         LinkedHashMap<String, List<Item>> out = new LinkedHashMap<>();
         for (String t : types) {
             List<Item> l = groups.get(t);
-            Collections.sort(l, new Comparator<Item>() {
-                @Override
-                public int compare(Item a, Item b) {
-                    // Most spools first; equal counts (incl. 0) A-Z.
-                    if (a.qty != b.qty) return b.qty - a.qty;
-                    return a.name.compareToIgnoreCase(b.name);
-                }
-            });
+            Collections.sort(l, ITEM_ORDER);
             out.put(t, l);
         }
         return out;
+    }
+
+    // ---------------- ordering (shared by list build and live re-sort) ----------------
+
+    /** Colours: most spools first; equal counts (incl. 0) A-Z. */
+    public static final Comparator<Item> ITEM_ORDER = new Comparator<Item>() {
+        @Override
+        public int compare(Item a, Item b) {
+            if (a.qty != b.qty) return b.qty - a.qty;
+            return a.name.compareToIgnoreCase(b.name);
+        }
+    };
+
+    /** Types: most spools first; ties (incl. all 0-spool types) keep the Min3D order, then A-Z. */
+    public static int compareTypes(String a, int totalA, String b, int totalB) {
+        if (totalA != totalB) return totalB - totalA;
+        int ra = Compat.rank(a), rb = Compat.rank(b);
+        if (ra != rb) return ra - rb;
+        return a.compareToIgnoreCase(b);
+    }
+
+    public static int total(List<Item> items) {
+        int sum = 0;
+        for (Item it : items) sum += it.qty;
+        return sum;
     }
 
     // ---------------- CSV backup ----------------
