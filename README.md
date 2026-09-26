@@ -9,8 +9,10 @@ Small Android app that reads the RFID tag on a Bambu Lab spool, shows the **offi
 - **Stock input**: after a scan, the current stock is shown with **−1 / +1** buttons (saved instantly), or type
   `xx spool(s)` and press Save. A typed number **replaces** the old one.
 - **Stock page**: every filament in the database, grouped by type in collapsible dropdowns (all closed when opened),
-  including colours with 0 stock. Order: PLA Basic, PLA Matte, PETG Basic, PETG Translucent, PLA Wood, PLA Glow,
-  PLA Marble (the last three abrasive), then everything else A–Z. Each row has −1 / +1; tap the number to type one.
+  including colours with 0 stock. Types with the most spools come first, and inside a type the colours with the
+  most spools come first. Ties (including all 0-spool types) follow: PLA Basic, PLA Matte, PETG Basic,
+  PETG Translucent, PLA Wood, PLA Glow, PLA Marble (the last three abrasive), then A–Z. The order refreshes each
+  time the page is opened. Each row has −1 / +1; tap the number to type one.
 - **A2L / H2C tags** on each type, from the official spec pages (bambulab.com/en/a2l/specs, /h2c/specs).
   Amber "A2L · HS" = needs a hardened-steel nozzle on the A2L.
 - **Reset to 0**: sets every count to 0 (asks for confirmation).
