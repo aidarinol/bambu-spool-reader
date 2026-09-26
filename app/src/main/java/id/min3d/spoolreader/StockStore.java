@@ -73,7 +73,7 @@ public final class StockStore {
         qty.edit().clear().apply();
     }
 
-    /** All filaments (table + remembered unknowns), grouped by type in the Min3D order, sorted by name. */
+    /** All filaments (table + remembered unknowns), grouped by type; most-stocked types and colours first. */
     public LinkedHashMap<String, List<Item>> grouped(ColorDb db) {
         Map<String, List<Item>> groups = new HashMap<>();
         for (ColorDb.Row r : db.stockRows()) {
@@ -88,10 +88,19 @@ public final class StockStore {
             String code = k.length >= 3 ? k[1] + " " + k[2] : e.getKey();
             add(groups, new Item(e.getKey(), f[0], f[1], code, cols, get(e.getKey())));
         }
+        final Map<String, Integer> totals = new HashMap<>();
+        for (Map.Entry<String, List<Item>> e : groups.entrySet()) {
+            int sum = 0;
+            for (Item it : e.getValue()) sum += it.qty;
+            totals.put(e.getKey(), sum);
+        }
         List<String> types = new ArrayList<>(groups.keySet());
+        // Most spools first; ties (incl. all the 0-spool types) keep the Min3D order, then A-Z.
         Collections.sort(types, new Comparator<String>() {
             @Override
             public int compare(String a, String b) {
+                int ta = totals.get(a), tb = totals.get(b);
+                if (ta != tb) return tb - ta;
                 int ra = Compat.rank(a), rb = Compat.rank(b);
                 if (ra != rb) return ra - rb;
                 return a.compareToIgnoreCase(b);
@@ -103,6 +112,8 @@ public final class StockStore {
             Collections.sort(l, new Comparator<Item>() {
                 @Override
                 public int compare(Item a, Item b) {
+                    // Most spools first; equal counts (incl. 0) A-Z.
+                    if (a.qty != b.qty) return b.qty - a.qty;
                     return a.name.compareToIgnoreCase(b.name);
                 }
             });
