@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'id.min3d.spoolreader'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'id.min3d.spoolreader'
+        minSdk 23
+        targetSdk 34
+        versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+        versionName "1.0." + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+    }
+
+    signingConfigs {
+        release {
+            // Supplied by CI via environment; never stored in the repo.
+            storeFile file(System.getenv('SIGNING_KEYSTORE') ?: "${rootDir}/signing.jks")
+            storePassword System.getenv('SIGNING_PASSWORD')
+            keyAlias 'spoolreader'
+            keyPassword System.getenv('SIGNING_PASSWORD')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+// No dependencies: plain Android framework only.
