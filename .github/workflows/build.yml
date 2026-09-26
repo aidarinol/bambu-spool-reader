@@ -59,18 +59,18 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk "out/SpoolReader-v1.0.${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "out/Min3D-Studio-v1.1.${{ github.run_number }}.apk"
           sha256sum out/*.apk | tee out/SHA256.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SpoolReader-apk
+          name: Min3D-Studio-apk
           path: out/*
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v1.0.${{ github.run_number }}" out/*.apk out/SHA256.txt \
-            --title "Spool Reader v1.0.${{ github.run_number }}" \
+          gh release create "v1.1.${{ github.run_number }}" out/*.apk out/SHA256.txt \
+            --title "Min3D Studio v1.1.${{ github.run_number }}" \
             --notes "Build otomatis dari commit ${{ github.sha }}. Unduh file .apk di bawah lalu pasang di HP."
