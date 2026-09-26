@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- filament ring (r=22) with hub hole (r=9) -->
+    <path android:fillColor="#22C55E" android:fillType="evenOdd"
+        android:pathData="M32,54a22,22 0,1 0,44 0a22,22 0,1 0,-44 0zM45,54a9,9 0,1 0,18 0a9,9 0,1 0,-18 0z" />
+    <!-- spool flange -->
+    <path android:strokeColor="#F4F4F5" android:strokeWidth="2.5" android:fillColor="#00000000"
+        android:pathData="M27,54a27,27 0,1 0,54 0a27,27 0,1 0,-54 0z" />
+    <!-- hub -->
+    <path android:fillColor="#F4F4F5"
+        android:pathData="M49,54a5,5 0,1 0,10 0a5,5 0,1 0,-10 0z" />
+</vector>
