@@ -34,3 +34,14 @@ Supaya update bisa langsung dipasang di atas versi lama, isi kedua secret itu
 ## Memperbarui daftar warna
 Unduh ulang `filaments_color_codes.json` dari BambuStudio, lalu buat ulang `colors.tsv`
 (kolom: fila_id, color_code, colors, fila_type, nama EN, sumber).
+
+## Lisensi & atribusi
+Proyek ini dirilis di bawah **GNU AGPL-3.0** (lihat `LICENSE`), karena memuat data turunan dari:
+- **Bambu Studio** (© Bambu Lab, AGPL-3.0): tabel nama warna di `app/src/main/assets/colors.tsv`
+  diturunkan dari `resources/profiles/BBL/filament/filaments_color_codes.json`.
+- **[Bambu-Lab-RFID-Library](https://github.com/queengooborg/Bambu-Lab-RFID-Library)** (GPL-3.0):
+  dump tag di `test/fixtures/` dan entri berlabel `komunitas` di `colors.tsv`.
+- Format tag dan cara menurunkan kunci mengikuti dokumentasi
+  [Bambu-Research-Group/RFID-Tag-Guide](https://github.com/Bambu-Research-Group/RFID-Tag-Guide).
+
+Proyek ini tidak berafiliasi dengan Bambu Lab.
