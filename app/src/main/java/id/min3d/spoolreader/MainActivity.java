@@ -28,22 +28,28 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.Set;
 
 /**
- * Min3D Studio: read-only Bambu Lab spool RFID reader + simple spool stock list.
+ * Min3D Studio: read-only Bambu Lab spool RFID reader + spool stock list.
  * No INTERNET permission, nothing is ever written to the tag.
  */
 public class MainActivity extends Activity implements NfcAdapter.ReaderCallback {
 
-    private static final int REQ_EXPORT = 42;
+    private static final int REQ_EXPORT_PDF = 42;
+    private static final int REQ_SAVE_BACKUP = 43;
+    private static final int REQ_LOAD_BACKUP = 44;
 
     private static final int BG = Color.rgb(24, 24, 27);
     private static final int CARD = Color.rgb(39, 39, 42);
@@ -53,6 +59,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private static final int ACCENT = Color.rgb(34, 197, 94);
     private static final int WARN = Color.rgb(250, 204, 21);
     private static final int ERR = Color.rgb(248, 113, 113);
+    private static final int BLUE = Color.rgb(96, 165, 250);
 
     private NfcAdapter nfc;
     private ColorDb db;
@@ -67,6 +74,17 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private boolean onStockPage;
     private Result lastResult;
     private String stockFilter = "";
+
+    /** Stock page state: which type groups are open (all closed when the page is opened from the tab). */
+    private final Set<String> expanded = new HashSet<>();
+    private TextView summaryView;
+    private final List<GroupView> groupViews = new ArrayList<>();
+
+    private static final class GroupView {
+        String type;
+        List<StockStore.Item> items;
+        TextView subtotal;
+    }
 
     // ---------------- lifecycle ----------------
 
@@ -96,7 +114,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         tabScan = tab("Scan");
         tabStock = tab("Stock");
         tabScan.setOnClickListener(v -> showScanPage());
-        tabStock.setOnClickListener(v -> showStockPage());
+        tabStock.setOnClickListener(v -> {
+            expanded.clear(); // every dropdown starts closed
+            stockFilter = "";
+            showStockPage();
+            scroll.scrollTo(0, 0);
+        });
         bar.addView(tabScan);
         bar.addView(tabStock);
         root.addView(bar);
@@ -262,7 +285,14 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
 
         final String type = m != null ? m.filaType
                 : (!d.detailedType.isEmpty() ? d.detailedType : (!d.filamentType.isEmpty() ? d.filamentType : ColorDb.OTHER_TYPE));
-        content.addView(text(!d.detailedType.isEmpty() ? d.detailedType : type, 18, MUTED, false));
+        LinearLayout typeLine = new LinearLayout(this);
+        typeLine.setOrientation(LinearLayout.HORIZONTAL);
+        typeLine.setGravity(Gravity.CENTER_VERTICAL);
+        TextView tt = text(!d.detailedType.isEmpty() ? d.detailedType : type, 18, MUTED, false);
+        tt.setPadding(0, 0, dp(6), 0);
+        typeLine.addView(tt);
+        addCompatTags(typeLine, type);
+        content.addView(typeLine);
 
         String conf;
         int confColor;
@@ -286,40 +316,57 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         c.setPadding(0, dp(8), 0, dp(16));
         content.addView(c);
 
-        // ---- stock input ----
-        final String key;
-        if (m != null) {
-            key = m.row.stockKey;
-        } else {
-            key = "X|" + d.materialId + "|" + d.variantId;
-        }
+        // ---- stock ----
+        final String key = m != null ? m.row.stockKey : "X|" + d.materialId + "|" + d.variantId;
+        final Runnable remember = () -> {
+            if (m == null) stock.rememberCustom(key, type, "Unknown (" + d.variantId + ")", d.colors);
+        };
+
         LinearLayout stockCard = card();
-        TextView sl = text("Stock", 14, MUTED, true);
-        stockCard.addView(sl);
+        stockCard.addView(text("Current stock", 14, MUTED, true));
+
         LinearLayout line = new LinearLayout(this);
         line.setOrientation(LinearLayout.HORIZONTAL);
         line.setGravity(Gravity.CENTER_VERTICAL);
-        line.setPadding(0, dp(6), 0, 0);
+        line.setPadding(0, dp(8), 0, 0);
+
         final EditText qty = new EditText(this);
         qty.setInputType(InputType.TYPE_CLASS_NUMBER);
         qty.setImeOptions(EditorInfo.IME_ACTION_DONE);
         qty.setSingleLine(true);
         qty.setTextColor(FG);
-        qty.setTextSize(22);
+        qty.setTextSize(24);
+        qty.setTypeface(Typeface.DEFAULT_BOLD);
         qty.setGravity(Gravity.CENTER);
         qty.setText(String.valueOf(stock.get(key)));
         qty.setSelectAllOnFocus(true);
-        line.addView(qty, new LinearLayout.LayoutParams(dp(90), LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        TextView minus = stepButton("−", 44);
+        TextView plus = stepButton("+", 44);
+        line.addView(minus);
+        line.addView(qty, new LinearLayout.LayoutParams(dp(76), LinearLayout.LayoutParams.WRAP_CONTENT));
+        line.addView(plus);
         TextView unit = text("spool(s)", 16, FG, false);
-        unit.setPadding(dp(10), 0, dp(10), 0);
+        unit.setPadding(dp(10), 0, dp(6), 0);
         line.addView(unit, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button save = button("Save", true);
         line.addView(save);
         stockCard.addView(line);
-        TextView hint = text("Saving replaces the previous count.", 12, MUTED, false);
-        hint.setPadding(0, dp(4), 0, 0);
+        TextView hint = text("+1 / −1 are saved immediately. Typing a number and pressing Save replaces the old count.", 12, MUTED, false);
+        hint.setPadding(0, dp(6), 0, 0);
         stockCard.addView(hint);
         content.addView(stockCard);
+
+        final View.OnClickListener step = v -> {
+            int n = Math.max(0, stock.get(key) + (v == plus ? 1 : -1));
+            remember.run();
+            stock.set(key, n);
+            qty.setText(String.valueOf(stock.get(key)));
+            qty.clearFocus();
+            hideKeyboard(qty);
+        };
+        minus.setOnClickListener(step);
+        plus.setOnClickListener(step);
 
         final Runnable doSave = () -> {
             Integer n = parseQty(qty.getText().toString());
@@ -327,7 +374,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
                 Toast.makeText(this, "Enter a whole number (0 or more).", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (m == null) stock.rememberCustom(key, type, "Unknown (" + d.variantId + ")", d.colors);
+            remember.run();
             stock.set(key, n);
             hideKeyboard(qty);
             qty.clearFocus();
@@ -374,32 +421,34 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             content.addView(text("Colour database could not be loaded.", 16, ERR, false));
             return;
         }
-        TreeMap<String, List<StockStore.Item>> groups = stock.grouped(db);
-        int total = 0, colours = 0;
-        for (List<StockStore.Item> l : groups.values())
-            for (StockStore.Item it : l)
-                if (it.qty > 0) {
-                    total += it.qty;
-                    colours++;
-                }
+        LinkedHashMap<String, List<StockStore.Item>> groups = stock.grouped(db);
 
         content.addView(text("Filament stock", 24, FG, true));
-        TextView sum = text(total + " spool(s) in stock across " + colours + " colour(s)", 14, MUTED, false);
-        sum.setPadding(0, dp(2), 0, dp(12));
-        content.addView(sum);
+        summaryView = text("", 14, MUTED, false);
+        summaryView.setPadding(0, dp(2), 0, dp(12));
+        content.addView(summaryView);
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout row1 = new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);
         Button reset = button("Reset to 0", false);
         reset.setTextColor(ERR);
         Button export = button("Export to PDF", true);
-        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        half.setMargins(0, 0, dp(8), 0);
-        actions.addView(reset, half);
-        actions.addView(export, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        content.addView(actions);
+        row1.addView(reset, halfLeft());
+        row1.addView(export, half());
+        content.addView(row1);
         reset.setOnClickListener(v -> confirmReset());
-        export.setOnClickListener(v -> startExport());
+        export.setOnClickListener(v -> startExportPdf());
+
+        LinearLayout row2 = new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        row2.setPadding(0, dp(8), 0, 0);
+        Button saveB = button("Save backup", false);
+        Button loadB = button("Load backup", false);
+        row2.addView(saveB, halfLeft());
+        row2.addView(loadB, half());
+        content.addView(row2);
+        saveB.setOnClickListener(v -> startSaveBackup());
+        loadB.setOnClickListener(v -> startLoadBackup());
 
         final EditText search = new EditText(this);
         search.setHint("Search colour or type…");
@@ -408,8 +457,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         search.setSingleLine(true);
         search.setText(stockFilter);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        sp.setMargins(0, dp(12), 0, dp(4));
+        sp.setMargins(0, dp(12), 0, dp(2));
         content.addView(search, sp);
+
+        TextView legend = text("Tags: printer can print this material. Amber A2L = needs a hardened-steel nozzle.", 11, MUTED, false);
+        legend.setPadding(0, 0, 0, dp(4));
+        content.addView(legend);
 
         final LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -433,33 +486,72 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         });
     }
 
-    private void renderStockList(LinearLayout list, TreeMap<String, List<StockStore.Item>> groups) {
+    private void renderStockList(LinearLayout list, LinkedHashMap<String, List<StockStore.Item>> groups) {
         list.removeAllViews();
+        groupViews.clear();
         String f = stockFilter.toLowerCase(Locale.ROOT);
+        boolean searching = !f.isEmpty();
         int shown = 0;
         for (Map.Entry<String, List<StockStore.Item>> g : groups.entrySet()) {
-            boolean typeHit = g.getKey().toLowerCase(Locale.ROOT).contains(f);
-            int sum = 0;
-            LinearLayout rows = new LinearLayout(this);
+            final String type = g.getKey();
+            boolean typeHit = Compat.label(type).toLowerCase(Locale.ROOT).contains(f);
+
+            final GroupView gv = new GroupView();
+            gv.type = type;
+            gv.items = g.getValue();
+            groupViews.add(gv);
+
+            final LinearLayout rows = new LinearLayout(this);
             rows.setOrientation(LinearLayout.VERTICAL);
             int n = 0;
             for (final StockStore.Item it : g.getValue()) {
-                sum += it.qty;
-                if (!f.isEmpty() && !typeHit && !it.name.toLowerCase(Locale.ROOT).contains(f)) continue;
-                rows.addView(stockRow(it));
+                if (searching && !typeHit && !it.name.toLowerCase(Locale.ROOT).contains(f)) continue;
+                rows.addView(stockRow(it, gv));
                 n++;
             }
             if (n == 0) continue;
             shown += n;
+
+            boolean open = searching || expanded.contains(type);
+            rows.setVisibility(open ? View.VISIBLE : View.GONE);
+
+            // header bar (dropdown)
             LinearLayout head = new LinearLayout(this);
             head.setOrientation(LinearLayout.HORIZONTAL);
-            head.setPadding(0, dp(18), 0, dp(6));
-            head.addView(text(g.getKey(), 16, FG, true), new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            head.addView(text(sum + " spool(s)", 13, sum > 0 ? ACCENT : MUTED, true));
-            list.addView(head);
-            View div = new View(this);
-            div.setBackgroundColor(LINE);
-            list.addView(div, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            head.setPadding(dp(12), dp(12), dp(12), dp(12));
+            GradientDrawable hb = new GradientDrawable();
+            hb.setColor(CARD);
+            hb.setCornerRadius(dp(10));
+            head.setBackground(hb);
+            final TextView chevron = text(open ? "▾" : "▸", 16, MUTED, true);
+            chevron.setPadding(0, 0, dp(10), 0);
+            head.addView(chevron);
+
+            LinearLayout mid = new LinearLayout(this);
+            mid.setOrientation(LinearLayout.VERTICAL);
+            mid.addView(text(Compat.label(type), 16, FG, true));
+            LinearLayout tags = new LinearLayout(this);
+            tags.setOrientation(LinearLayout.HORIZONTAL);
+            tags.setPadding(0, dp(4), 0, 0);
+            if (addCompatTags(tags, type)) mid.addView(tags);
+            head.addView(mid, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            gv.subtotal = text("", 13, MUTED, true);
+            head.addView(gv.subtotal);
+            updateSubtotal(gv);
+
+            head.setOnClickListener(v -> {
+                boolean nowOpen = rows.getVisibility() != View.VISIBLE;
+                rows.setVisibility(nowOpen ? View.VISIBLE : View.GONE);
+                chevron.setText(nowOpen ? "▾" : "▸");
+                if (nowOpen) expanded.add(type);
+                else expanded.remove(type);
+            });
+
+            LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            hp.setMargins(0, dp(8), 0, 0);
+            list.addView(head, hp);
             list.addView(rows);
         }
         if (shown == 0) {
@@ -467,27 +559,72 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             none.setPadding(0, dp(16), 0, 0);
             list.addView(none);
         }
+        updateSummary();
     }
 
-    private View stockRow(final StockStore.Item it) {
+    private View stockRow(final StockStore.Item it, final GroupView gv) {
         LinearLayout r = new LinearLayout(this);
         r.setOrientation(LinearLayout.HORIZONTAL);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(0, dp(9), 0, dp(9));
+        r.setPadding(dp(4), dp(8), 0, dp(8));
         View sw = swatches(it.colors, dp(22), dp(5));
         r.addView(sw, new LinearLayout.LayoutParams(dp(22), dp(22)));
         LinearLayout mid = new LinearLayout(this);
         mid.setOrientation(LinearLayout.VERTICAL);
         mid.setPadding(dp(12), 0, dp(8), 0);
-        mid.addView(text(it.name, 15, it.qty > 0 ? FG : MUTED, false));
+        final TextView name = text(it.name, 15, it.qty > 0 ? FG : MUTED, false);
+        mid.addView(name);
         mid.addView(text(it.code, 11, MUTED, false));
         r.addView(mid, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        r.addView(text(String.valueOf(it.qty), 18, it.qty > 0 ? FG : MUTED, it.qty > 0));
-        r.setOnClickListener(v -> editQty(it));
+
+        final TextView minus = stepButton("−", 34);
+        final TextView plus = stepButton("+", 34);
+        final TextView q = text(String.valueOf(it.qty), 18, it.qty > 0 ? FG : MUTED, it.qty > 0);
+        q.setGravity(Gravity.CENTER);
+        r.addView(minus);
+        r.addView(q, new LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.WRAP_CONTENT));
+        r.addView(plus);
+
+        final Runnable refresh = () -> {
+            q.setText(String.valueOf(it.qty));
+            q.setTextColor(it.qty > 0 ? FG : MUTED);
+            q.setTypeface(it.qty > 0 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            name.setTextColor(it.qty > 0 ? FG : MUTED);
+            updateSubtotal(gv);
+            updateSummary();
+        };
+        View.OnClickListener step = v -> {
+            it.qty = Math.max(0, it.qty + (v == plus ? 1 : -1));
+            stock.set(it.key, it.qty);
+            refresh.run();
+        };
+        minus.setOnClickListener(step);
+        plus.setOnClickListener(step);
+        q.setOnClickListener(v -> editQty(it, refresh));
         return r;
     }
 
-    private void editQty(final StockStore.Item it) {
+    private void updateSubtotal(GroupView gv) {
+        if (gv.subtotal == null) return;
+        int sum = 0;
+        for (StockStore.Item it : gv.items) sum += it.qty;
+        gv.subtotal.setText(sum + " spool(s)");
+        gv.subtotal.setTextColor(sum > 0 ? ACCENT : MUTED);
+    }
+
+    private void updateSummary() {
+        if (summaryView == null) return;
+        int total = 0, colours = 0;
+        for (GroupView gv : groupViews)
+            for (StockStore.Item it : gv.items)
+                if (it.qty > 0) {
+                    total += it.qty;
+                    colours++;
+                }
+        summaryView.setText(total + " spool(s) in stock across " + colours + " colour(s)");
+    }
+
+    private void editQty(final StockStore.Item it, final Runnable refresh) {
         final EditText in = new EditText(this);
         in.setInputType(InputType.TYPE_CLASS_NUMBER);
         in.setText(String.valueOf(it.qty));
@@ -505,10 +642,9 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
                         Toast.makeText(this, "Enter a whole number (0 or more).", Toast.LENGTH_SHORT).show();
                         return;
                     }
+                    it.qty = n;
                     stock.set(it.key, n);
-                    int y = scroll.getScrollY();
-                    showStockPage();
-                    scroll.post(() -> scroll.scrollTo(0, y));
+                    refresh.run();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -517,60 +653,177 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private void confirmReset() {
         new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
                 .setTitle("Reset all stock to 0?")
-                .setMessage("Every filament count will be set to 0. This cannot be undone.")
+                .setMessage("Every filament count will be set to 0. This cannot be undone. Tip: use Save backup first.")
                 .setPositiveButton("Reset to 0", (dlg, w) -> {
                     stock.resetAll();
                     Toast.makeText(this, "All stock reset to 0.", Toast.LENGTH_SHORT).show();
-                    showStockPage();
+                    refreshStockPageKeepingScroll();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    private void startExport() {
-        boolean any = false;
+    private void refreshStockPageKeepingScroll() {
+        final int y = scroll.getScrollY();
+        showStockPage();
+        scroll.post(() -> scroll.scrollTo(0, y));
+    }
+
+    private boolean anyStock() {
         for (List<StockStore.Item> l : stock.grouped(db).values())
-            for (StockStore.Item it : l) if (it.qty > 0) any = true;
-        if (!any) {
+            for (StockStore.Item it : l) if (it.qty > 0) return true;
+        return false;
+    }
+
+    private String today() {
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date());
+    }
+
+    private void startExportPdf() {
+        if (!anyStock()) {
             Toast.makeText(this, "Nothing in stock to export.", Toast.LENGTH_SHORT).show();
             return;
         }
-        String date = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date());
+        createDocument("application/pdf", "Min3D-Filament-Stock-" + today() + ".pdf", REQ_EXPORT_PDF);
+    }
+
+    private void startSaveBackup() {
+        createDocument("text/csv", "Min3D-Stock-Backup-" + today() + ".csv", REQ_SAVE_BACKUP);
+    }
+
+    private void startLoadBackup() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/csv", "text/comma-separated-values", "text/plain",
+                "application/csv", "application/vnd.ms-excel", "application/octet-stream"});
+        try {
+            startActivityForResult(i, REQ_LOAD_BACKUP);
+        } catch (Exception e) {
+            Toast.makeText(this, "No file manager available.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void createDocument(String mime, String fileName, int req) {
         Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.setType("application/pdf");
-        i.putExtra(Intent.EXTRA_TITLE, "Min3D-Filament-Stock-" + date + ".pdf");
+        i.setType(mime);
+        i.putExtra(Intent.EXTRA_TITLE, fileName);
         try {
-            startActivityForResult(i, REQ_EXPORT);
+            startActivityForResult(i, req);
         } catch (Exception e) {
-            Toast.makeText(this, "No file manager available to save the PDF.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No file manager available to save the file.", Toast.LENGTH_LONG).show();
         }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQ_EXPORT || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
         final Uri uri = data.getData();
-        String when = new SimpleDateFormat("d MMM yyyy, HH:mm", Locale.ENGLISH).format(new Date());
-        try (OutputStream out = getContentResolver().openOutputStream(uri)) {
-            if (out == null) throw new IOException("no stream");
-            int n = new PdfExporter().write(out, stock.grouped(db), when);
-            Toast.makeText(this, "PDF saved (" + n + " spool(s)).", Toast.LENGTH_SHORT).show();
-            Intent view = new Intent(Intent.ACTION_VIEW);
-            view.setDataAndType(uri, "application/pdf");
-            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            try {
-                startActivity(view);
-            } catch (Exception ignored) {
-                // no PDF viewer installed; the file is saved anyway
+        if (requestCode == REQ_EXPORT_PDF) {
+            String when = new SimpleDateFormat("d MMM yyyy, HH:mm", Locale.ENGLISH).format(new Date());
+            try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                if (out == null) throw new IOException("no stream");
+                int n = new PdfExporter().write(out, stock.grouped(db), when);
+                Toast.makeText(this, "PDF saved (" + n + " spool(s)).", Toast.LENGTH_SHORT).show();
+                Intent view = new Intent(Intent.ACTION_VIEW);
+                view.setDataAndType(uri, "application/pdf");
+                view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try {
+                    startActivity(view);
+                } catch (Exception ignored) {
+                    // no PDF viewer installed; the file is saved anyway
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not save the PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
-        } catch (Exception e) {
-            Toast.makeText(this, "Could not save the PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } else if (requestCode == REQ_SAVE_BACKUP) {
+            try (OutputStream out = getContentResolver().openOutputStream(uri, "wt")) {
+                if (out == null) throw new IOException("no stream");
+                int n = stock.writeBackup(out, db);
+                Toast.makeText(this, "Backup saved (" + n + " spool(s)).", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Could not save the backup: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == REQ_LOAD_BACKUP) {
+            final StockStore.Backup b;
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new IOException("Could not open the file.");
+                b = StockStore.readBackup(in);
+            } catch (Exception e) {
+                new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                        .setTitle("Could not load backup")
+                        .setMessage(e.getMessage())
+                        .setPositiveButton("OK", null)
+                        .show();
+                return;
+            }
+            new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                    .setTitle("Load this backup?")
+                    .setMessage("It contains " + b.spools + " spool(s) in " + b.entries + " entr" + (b.entries == 1 ? "y" : "ies")
+                            + ". Your current stock will be replaced by the backup.")
+                    .setPositiveButton("Load", (dlg, w) -> {
+                        stock.apply(b);
+                        Toast.makeText(this, "Backup loaded.", Toast.LENGTH_SHORT).show();
+                        refreshStockPageKeepingScroll();
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         }
     }
 
     // ---------------- UI helpers ----------------
+
+    /** Adds A2L / H2C chips. @return true if at least one chip was added */
+    private boolean addCompatTags(LinearLayout parent, String type) {
+        boolean any = false;
+        Compat.A2L a = Compat.a2l(type);
+        if (a != Compat.A2L.NO) {
+            parent.addView(chip(a == Compat.A2L.HARDENED ? "A2L · HS" : "A2L", a == Compat.A2L.HARDENED ? WARN : ACCENT));
+            any = true;
+        }
+        if (Compat.h2c(type)) {
+            parent.addView(chip("H2C", BLUE));
+            any = true;
+        }
+        return any;
+    }
+
+    private TextView chip(String label, int color) {
+        TextView t = text(label, 11, color, true);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(6));
+        g.setStroke(dp(1), color);
+        t.setBackground(g);
+        t.setPadding(dp(7), dp(1), dp(7), dp(2));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, dp(6), 0);
+        t.setLayoutParams(lp);
+        return t;
+    }
+
+    private TextView stepButton(String label, int sizeDp) {
+        TextView b = text(label, sizeDp >= 40 ? 22 : 18, FG, true);
+        b.setGravity(Gravity.CENTER);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(Color.rgb(52, 52, 58));
+        b.setBackground(g);
+        b.setClickable(true);
+        b.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
+        return b;
+    }
+
+    private LinearLayout.LayoutParams half() {
+        return new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+    }
+
+    private LinearLayout.LayoutParams halfLeft() {
+        LinearLayout.LayoutParams lp = half();
+        lp.setMargins(0, 0, dp(8), 0);
+        return lp;
+    }
 
     private void highlightTabs() {
         styleTab(tabScan, !onStockPage);

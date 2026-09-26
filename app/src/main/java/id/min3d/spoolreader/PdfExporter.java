@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 /** Writes an A4 stock report: only filaments with stock > 0, grouped by type. */
 public final class PdfExporter {
@@ -41,7 +40,7 @@ public final class PdfExporter {
     }
 
     /** @return number of spools written */
-    public int write(OutputStream out, TreeMap<String, List<StockStore.Item>> groups, String generatedAt) throws IOException {
+    public int write(OutputStream out, Map<String, List<StockStore.Item>> groups, String generatedAt) throws IOException {
         int total = 0, colours = 0;
         for (List<StockStore.Item> l : groups.values())
             for (StockStore.Item it : l)
@@ -87,7 +86,7 @@ public final class PdfExporter {
     private void groupHeader(String type, int sum, boolean cont) {
         fill.setColor(Color.rgb(34, 34, 38));
         c.drawRect(M, y, W - M, y + HEAD - 6, fill);
-        c.drawText(type + (cont ? "  (cont.)" : ""), M + 8, y + 14, group);
+        c.drawText(Compat.label(type) + (cont ? "  (cont.)" : ""), M + 8, y + 14, group);
         Paint r = paint(10, true, Color.WHITE);
         r.setTextAlign(Paint.Align.RIGHT);
         c.drawText(sum + " spool(s)", W - M - 8, y + 14, r);
