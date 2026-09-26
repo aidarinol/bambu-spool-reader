@@ -35,6 +35,16 @@ public class ParserTest {
             System.out.println((ok ? "OK   " : "FAIL ") + f[0] + " -> " + got + " (" + (m == null ? "-" : m.how) + ") "
                     + sd.variantId + " " + sd.detailedType + " " + sd.colors);
         }
+        // stock list: one row per stock key, no empty types, community duplicate aliased to official row
+        java.util.List<ColorDb.Row> sr = db.stockRows();
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (ColorDb.Row r : sr) {
+            if (!keys.add(r.stockKey)) { System.out.println("DUP stock key " + r.stockKey); fail++; }
+            if (r.filaType == null || r.filaType.isEmpty()) { System.out.println("EMPTY type " + r.stockKey); fail++; }
+        }
+        for (ColorDb.Row r : sr)
+            if (r.filaId.equals("GFG00") && r.name.equals("Gray") && !r.official()) { System.out.println("community Gray not aliased"); fail++; }
+        System.out.println("stock rows: " + sr.size() + " (table rows " + db.size() + ")");
         if (fail > 0) { System.out.println(fail + " failure(s)"); System.exit(1); }
         System.out.println("all passed");
     }
