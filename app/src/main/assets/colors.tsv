@@ -1,0 +1,325 @@
+# fila_id	color_code	colors	fila_type	name	source
+GFA00	A0	#FF6A13FF	PLA Basic	Orange	resmi
+GFA00	A1	#FF9016FF	PLA Basic	Pumpkin Orange	resmi
+GFA00	B1	#5B6579FF	PLA Basic	Blue Gray	resmi
+GFA00	B3	#0056B8FF	PLA Basic	Cobalt Blue	resmi
+GFA00	B5	#00B1B7FF	PLA Basic	Turquoise	resmi
+GFA00	B8	#0086D6FF	PLA Basic	Cyan	resmi
+GFA00	B9	#0A2989FF	PLA Basic	Blue	resmi
+GFA00	D0	#8E9089FF	PLA Basic	Gray	resmi
+GFA00	D1	#A6A9AAFF	PLA Basic	Silver	resmi
+GFA00	D2	#D1D3D5FF	PLA Basic	Light Gray	resmi
+GFA00	D3	#545454FF	PLA Basic	Dark Gray	resmi
+GFA00	G2	#3F8E43FF	PLA Basic	Mistletoe Green	resmi
+GFA00	G3	#BECF00FF	PLA Basic	Bright Green	resmi
+GFA00	G6	#00AE42FF	PLA Basic	Bambu Green	resmi
+GFA00	K0	#000000FF	PLA Basic	Black	resmi
+GFA00	M0	#9CDBD9FF,#FFFFFFFF	PLA Basic	Arctic Whisper	resmi
+GFA00	M1	#E94B3CFF,#FFFFFFFF	PLA Basic	Solar Breeze	resmi
+GFA00	M2	#307FE2FF,#54FF9BFF	PLA Basic	Ocean to Meadow	resmi
+GFA00	M3	#F78F77FF,#E4505AFF	PLA Basic	Pink Citrus	resmi
+GFA00	M4	#B6FF43FF,#4EC939FF	PLA Basic	Mint Lime	resmi
+GFA00	M5	#6FCAEFFF,#8573DDFF	PLA Basic	Blueberry Bubblegum	resmi
+GFA00	M6	#CE4406FF,#ED9558FF	PLA Basic	Dusk Glare	resmi
+GFA00	M7	#E7C1D5FF,#8EC9E9FF	PLA Basic	Cotton Candy Cloud	resmi
+GFA00	N0	#9D432CFF	PLA Basic	Brown	resmi
+GFA00	N1	#6F5034FF	PLA Basic	Cocoa Brown	resmi
+GFA00	P0	#F7E6DEFF	PLA Basic	Beige	resmi
+GFA00	P1	#F55A74FF	PLA Basic	Pink	resmi
+GFA00	P2	#482960FF	PLA Basic	Indigo Purple	resmi
+GFA00	P5	#5E43B7FF	PLA Basic	Purple	resmi
+GFA00	P6	#EC008CFF	PLA Basic	Magenta	resmi
+GFA00	R0	#C12E1FFF	PLA Basic	Red	resmi
+GFA00	R2	#9D2235FF	PLA Basic	Maroon Red	resmi
+GFA00	R3	#F5547CFF	PLA Basic	Hot Pink	resmi
+GFA00	W1	#FFFFFFFF	PLA Basic	Jade White	resmi
+GFA00	Y0	#F4EE2AFF	PLA Basic	Yellow	resmi
+GFA00	Y2	#FEC600FF	PLA Basic	Sunflower Yellow	resmi
+GFA00	Y3	#847D48FF	PLA Basic	Bronze	resmi
+GFA00	Y4	#E4BD68FF	PLA Basic	Gold	resmi
+GFA01	A2	#F99963FF	PLA Matte	Mandarin Orange	resmi
+GFA01	B0	#56B7E6FF	PLA Matte	Sky Blue	resmi
+GFA01	B3	#0078BFFF	PLA Matte	Marine Blue	resmi
+GFA01	B4	#A3D8E1FF	PLA Matte	Ice Blue	resmi
+GFA01	B6	#042F56FF	PLA Matte	Dark Blue	resmi
+GFA01	D0	#757575FF	PLA Matte	Nardo Gray	resmi
+GFA01	D3	#9B9EA0FF	PLA Matte	Ash Gray	resmi
+GFA01	G0	#C2E189FF	PLA Matte	Apple Green	resmi
+GFA01	G1	#61C680FF	PLA Matte	Grass Green	resmi
+GFA01	G7	#68724DFF	PLA Matte	Dark Green	resmi
+GFA01	K1	#000000FF	PLA Matte	Charcoal	resmi
+GFA01	N0	#4D3324FF	PLA Matte	Dark Chocolate	resmi
+GFA01	N1	#D3B7A7FF	PLA Matte	Latte Brown	resmi
+GFA01	N2	#7D6556FF	PLA Matte	Dark Brown	resmi
+GFA01	N3	#AE835BFF	PLA Matte	Caramel	resmi
+GFA01	P3	#E8AFCFFF	PLA Matte	Sakura Pink	resmi
+GFA01	P4	#AE96D4FF	PLA Matte	Lilac Purple	resmi
+GFA01	R1	#DE4343FF	PLA Matte	Scarlet Red	resmi
+GFA01	R2	#B15533FF	PLA Matte	Terracotta	resmi
+GFA01	R3	#950051FF	PLA Matte	Plum	resmi
+GFA01	R4	#BB3D43FF	PLA Matte	Dark Red	resmi
+GFA01	W2	#FFFFFFFF	PLA Matte	Ivory White	resmi
+GFA01	W3	#CBC6B8FF	PLA Matte	Bone White	resmi
+GFA01	Y2	#F7D959FF	PLA Matte	Lemon Yellow	resmi
+GFA01	Y3	#E8DBB7FF	PLA Matte	Desert Tan	resmi
+GFA05	B0	#147BD1FF	PLA Silk	Blue	resmi
+GFA05	D1	#EAECEBFF	PLA Silk	Silver	resmi
+GFA05	G1	#4CE4A0FF	PLA Silk	Green	resmi
+GFA05	N4	#5E4B3CFF	PLA Silk	Copper	resmi
+GFA05	P3	#EEB1C1FF	PLA Silk	Pink	resmi
+GFA05	P5	#854CE4FF	PLA Silk	Purple	resmi
+GFA05	T1	#FF9425FF,#C16784FF	PLA Silk	Gilded Rose	resmi
+GFA05	T2	#0047BBFF,#7D1B49FF	PLA Silk	Midnight Blaze	resmi
+GFA05	T3	#0047BBFF,#BB22A3FF	PLA Silk	Neon City	resmi
+GFA05	T4	#418FDEFF,#70C884FF	PLA Silk	Blue Hawaii	resmi
+GFA05	T5	#000000FF,#A34342FF	PLA Silk	Velvet Eclipse (Black-Red)	resmi
+GFA05	W0	#FFFFFFFF	PLA Silk	White	resmi
+GFA05	Y4	#E5B03DFF	PLA Silk	Gold	resmi
+GFA06	B0	#A8C6EEFF	PLA Silk+	Baby Blue	resmi
+GFA06	B1	#008BDAFF	PLA Silk+	Blue	resmi
+GFA06	D0	#5F6367FF	PLA Silk+	Titan Gray	resmi
+GFA06	D1	#C8C8C8FF	PLA Silk+	Silver	resmi
+GFA06	G0	#018814FF	PLA Silk+	Candy Green	resmi
+GFA06	G1	#96DCB9FF	PLA Silk+	Mint	resmi
+GFA06	P0	#8671CBFF	PLA Silk+	Purple	resmi
+GFA06	R0	#D02727FF	PLA Silk+	Candy Red	resmi
+GFA06	R1	#BA9594FF	PLA Silk+	Rose Gold	resmi
+GFA06	R2	#F7ADA6FF	PLA Silk+	Pink	resmi
+GFA06	W0	#FFFFFFFF	PLA Silk+	White	resmi
+GFA06	Y0	#F3CFB2FF	PLA Silk+	Champagne	resmi
+GFA06	Y1	#F4A925FF	PLA Silk+	Gold	resmi
+GFA07	D4	#F7F3F0FF	PLA Marble	White Marble	resmi
+GFA07	R5	#AD4E38FF	PLA Marble	Red Granite	resmi
+GFA08	B7	#483D8BFF	PLA Sparkle	Royal Purple Sparkle	resmi
+GFA08	D5	#8E9089FF	PLA Sparkle	Slate Gray Sparkle	resmi
+GFA08	G3	#3F5443FF	PLA Sparkle	Alpine Green Sparkle	resmi
+GFA08	K2	#2D2B28FF	PLA Sparkle	Onyx Black Sparkle	resmi
+GFA08	R2	#792B36FF	PLA Sparkle	Crimson Red Sparkle	resmi
+GFA08	Y1	#CEA629FF	PLA Sparkle	Classic Gold Sparkle	resmi
+GFA09	A0	#FF7F41FF	PLA Tough	Orange	resmi
+GFA09	B4	#0085ADFF	PLA Tough	Light Blue	resmi
+GFA09	B5	#6667ABFF	PLA Tough	Lavender Blue	resmi
+GFA09	D0	#515A6CFF	PLA Tough	Gray	resmi
+GFA09	D1	#898D8DFF	PLA Tough	Silver	resmi
+GFA09	G4	#00482BFF	PLA Tough	Pine Green	resmi
+GFA09	K0	#25282AFF	PLA Tough	Black	resmi
+GFA09	R3	#DD3C22FF	PLA Tough	Vermilion Red	resmi
+GFA09	W3	#F9F7F4FF	PLA Tough	White	resmi
+GFA09	Y0	#FEDB00FF	PLA Tough	Yellow	resmi
+GFA11	D0	#CDCECAFF	PLA Aero	Gray	resmi
+GFA11	K0	#000000FF	PLA Aero	Black	resmi
+GFA11	W0	#FFFFFFFF	PLA Aero	White	resmi
+GFA12	A0	#FF9D5BFF	PLA Glow	Glow Orange	resmi
+GFA12	B0	#7AC0E9FF	PLA Glow	Glow Blue	resmi
+GFA12	G0	#A1FFACFF	PLA Glow	Glow Green	resmi
+GFA12	R0	#F17B8FFF	PLA Glow	Glow Pink	resmi
+GFA12	Y0	#F8FF80FF	PLA Glow	Glow Yellow	resmi
+GFA13	W0	#FFFFFFFF	PLA Dynamic	UV Color Changing - White to Coral	resmi
+GFA15	B0	#594177FF	PLA Galaxy	Purple	resmi
+GFA15	G0	#3B665EFF	PLA Galaxy	Green	resmi
+GFA15	G1	#424379FF	PLA Galaxy	Nebulae	resmi
+GFA15	R0	#684A43FF	PLA Galaxy	Brown	resmi
+GFA16	G0	#918669FF	PLA Wood	Classic Birch	resmi
+GFA16	K0	#4F3F24FF	PLA Wood	Black Walnut	resmi
+GFA16	N0	#995F11FF	PLA Wood	Clay Brown	resmi
+GFA16	R0	#4C241CFF	PLA Wood	Rosewood	resmi
+GFA16	W0	#D6CCA3FF	PLA Wood	White Oak	resmi
+GFA16	Y0	#C98935FF	PLA Wood	Ochre Yellow	resmi
+GFA50	B6	#2842ADFF	PLA-CF	Royal Blue	resmi
+GFA50	B9	#6E88BCFF	PLA-CF	Jeans Blue	resmi
+GFA50	D6	#4D5054FF	PLA-CF	Lava Gray	resmi
+GFA50	G7	#5C9748FF	PLA-CF	Matcha Green	resmi
+GFA50	K0	#000000FF	PLA-CF	Black	resmi
+GFA50	P7	#69398EFF	PLA-CF	Iris Purple	resmi
+GFA50	R4	#951E23FF	PLA-CF	Burgundy Red	resmi
+GFB00	A0	#FF6A13FF	ABS	Orange	resmi
+GFB00	B0	#0A2CA5FF	ABS	Blue	resmi
+GFB00	B4	#489FDFFF	ABS	Azure	resmi
+GFB00	B6	#0C2340FF	ABS	Navy Blue	resmi
+GFB00	B8	#7AE1BFFF	ABS	Mint	resmi
+GFB00	D1	#87909AFF	ABS	Silver	resmi
+GFB00	G6	#00AE42FF	ABS	Bambu Green	resmi
+GFB00	G7	#789D4AFF	ABS	Olive	resmi
+GFB00	K0	#000000FF	ABS	Black	resmi
+GFB00	P4	#7248BDFF	ABS	Lavender	resmi
+GFB00	P6	#AF1685FF	ABS	Purple	resmi
+GFB00	R0	#D32941FF	ABS	Red	resmi
+GFB00	W0	#FFFFFFFF	ABS	White	resmi
+GFB00	Y0	#FCE900FF	ABS	Yellow	resmi
+GFB00	Y1	#FFC72CFF	ABS	Tangerine Yellow	resmi
+GFB00	Y2	#DFD1A7FF	ABS	Beige	resmi
+GFB01	B0	#2140B4FF	ASA	Blue	resmi
+GFB01	D0	#8A949EFF	ASA	Gray	resmi
+GFB01	G0	#00A6A0FF	ASA	Green	resmi
+GFB01	K0	#000000FF	ASA	Black	resmi
+GFB01	R0	#E02928FF	ASA	Red	resmi
+GFB01	W0	#FFFAF2FF	ASA	White	resmi
+GFB02	W0	#F5F1DDFF	ASA Aero	White	resmi
+GFB50	A0	#F48438FF	ABS-GF	Orange	resmi
+GFB50	B0	#0C3B95FF	ABS-GF	Blue	resmi
+GFB50	D0	#C6C6C6FF	ABS-GF	Gray	resmi
+GFB50	G0	#61BF36FF	ABS-GF	Green	resmi
+GFB50	K0	#000000FF	ABS-GF	Black	resmi
+GFB50	R0	#E83100FF	ABS-GF	Red	resmi
+GFB50	W0	#FFFFFFFF	ABS-GF	White	resmi
+GFB50	Y0	#FFE133FF	ABS-GF	Yellow	resmi
+GFB51	K0	#000000FF	ASA-CF	Black	resmi
+GFC00	C0	#68686580	PC	Clear Black	resmi
+GFC00	C1	#00000000	PC	Transparent	resmi
+GFC00	K0	#000000FF	PC	Black	resmi
+GFC00	W0	#FFFFFFFF	PC	White	resmi
+GFC01	D0	#A8A8AAFF	PC FR	Gray	resmi
+GFC01	K0	#000000FF	PC FR	Black	resmi
+GFC01	W0	#FFFFFFFF	PC FR	White	resmi
+GFG01	A0	#FF911A80	PETG Translucent	Translucent Orange	resmi
+GFG01	B0	#61B0FF80	PETG Translucent	Translucent Light Blue	resmi
+GFG01	C0	#00000000	PETG Translucent	Clear	resmi
+GFG01	D0	#8E8E8E80	PETG Translucent	Translucent Gray	resmi
+GFG01	G0	#748C4580	PETG Translucent	Translucent Olive	resmi
+GFG01	G1	#77EDD780	PETG Translucent	Translucent Teal	resmi
+GFG01	N0	#C9A38180	PETG Translucent	Translucent Brown	resmi
+GFG01	P0	#D6ABFF80	PETG Translucent	Translucent Purple	resmi
+GFG01	P1	#F9C1BD80	PETG Translucent	Translucent Pink	resmi
+GFG02	A0	#F75403FF	PETG HF	Orange	resmi
+GFG02	B0	#002E96FF	PETG HF	Blue	resmi
+GFG02	B1	#1F79E5FF	PETG HF	Lake Blue	resmi
+GFG02	D0	#ADB1B2FF	PETG HF	Gray	resmi
+GFG02	D1	#515151FF	PETG HF	Dark Gray	resmi
+GFG02	G0	#00AE42FF	PETG HF	Green	resmi
+GFG02	G1	#6EE53CFF	PETG HF	Lime Green	resmi
+GFG02	G2	#39541AFF	PETG HF	Forest Green	resmi
+GFG02	K0	#000000FF	PETG HF	Black	resmi
+GFG02	N1	#875718FF	PETG HF	Peanut Brown	resmi
+GFG02	R0	#BC0900FF	PETG HF	Red	resmi
+GFG02	W0	#FFFFFFFF	PETG HF	White	resmi
+GFG02	Y0	#FFD00BFF	PETG HF	Yellow	resmi
+GFG02	Y1	#F9DFB9FF	PETG HF	Cream	resmi
+GFG50	B6	#324585FF	PETG-CF	Indigo Blue	resmi
+GFG50	D6	#565656FF	PETG-CF	Titan Gray	resmi
+GFG50	G7	#16B08EFF	PETG-CF	Malachite Green	resmi
+GFG50	K0	#000000FF	PETG-CF	Black	resmi
+GFG50	P7	#583061FF	PETG-CF	Violet Purple	resmi
+GFG50	R4	#9F332AFF	PETG-CF	Brick Red	resmi
+GFN04	K0	#000000FF	PAHT-CF	Black	resmi
+GFN05	K0	#000000FF	PA6-CF	Black	resmi
+GFN06	K0	#000000FF	PPA-CF	Black	resmi
+GFN08	B0	#75AED8FF	PA6-GF	Blue	resmi
+GFN08	D0	#EAEAE4FF	PA6-GF	White	resmi
+GFN08	D1	#353533FF	PA6-GF	Gray	resmi
+GFN08	G0	#C5ED48FF	PA6-GF	Lime	resmi
+GFN08	K0	#000000FF	PA6-GF	Black	resmi
+GFN08	N0	#5B492FFF	PA6-GF	Brown	resmi
+GFN08	R0	#FF4800FF	PA6-GF	Orange	resmi
+GFN08	Y0	#FFCE00FF	PA6-GF	Yellow	resmi
+GFS03	G1	#C0DF16FF	Support for PA/PET	Green	resmi
+GFS04	Y0	#F0F1A880	PVA	Clear	resmi
+GFS05	C0	#00000000	Support for PLA/PETG	Nature	resmi
+GFS05	K0	#000000FF	Support for PLA/PETG	Black	resmi
+GFS06	W0	#FFFFFFFF	Support for ABS	White	resmi
+GFT01	K0	#000000FF	PET-CF	Black	resmi
+GFT02	K0	#000000FF	PPS-CF	Black	resmi
+GFU00	B0	#0072CEFF	TPU 95A HF	Blue	resmi
+GFU00	D0	#898D8DFF	TPU 95A HF	Gray	resmi
+GFU00	K0	#101820FF	TPU 95A HF	Black	resmi
+GFU00	R0	#C8102EFF	TPU 95A HF	Red	resmi
+GFU00	W0	#FFFFFFFF	TPU 95A HF	White	resmi
+GFU00	Y0	#F3E600FF	TPU 95A HF	Yellow	resmi
+GFU01	K0	#000000FF	TPU 95A	Black	resmi
+GFU01	W0	#FFFFFFFF	TPU 95A	White	resmi
+GFU02	B0	#5898DDFF	TPU for AMS	Blue	resmi
+GFU02	D0	#939393FF	TPU for AMS	Gray	resmi
+GFU02	G0	#90FF1AFF	TPU for AMS	Neon Green	resmi
+GFU02	K0	#000000FF	TPU for AMS	Black	resmi
+GFU02	R0	#ED0000FF	TPU for AMS	Red	resmi
+GFU02	W0	#FFFFFFFF	TPU for AMS	White	resmi
+GFU02	Y0	#F9EF41FF	TPU for AMS	Yellow	resmi
+GFA18	K0	#000000FF	PLA Lite	Black	resmi
+GFA18	Y0	#EFE255FF	PLA Lite	Yellow	resmi
+GFA18	W0	#FFFFFFFF	PLA Lite	White	resmi
+GFA18	B0	#4DAFDAFF	PLA Lite	Cyan	resmi
+GFA18	R0	#C6001AFF	PLA Lite	Red	resmi
+GFA18	D0	#999D9DFF	PLA Lite	Gray	resmi
+GFA17	R0	#B5001180	PLA Translucent	Red	resmi
+GFA17	R1	#F5B6CD80	PLA Translucent	Cherry Pink	resmi
+GFA17	A0	#F74E0280	PLA Translucent	Orange	resmi
+GFA17	Y0	#F5DBAB80	PLA Translucent	Mellow Yellow	resmi
+GFA17	G0	#96D8AF80	PLA Translucent	Light Jade	resmi
+GFA17	B0	#B8CDE980	PLA Translucent	Ice Blue	resmi
+GFA17	B1	#0047BB80	PLA Translucent	Blue	resmi
+GFA17	B2	#009FA180	PLA Translucent	Teal	resmi
+GFA17	P0	#8344B080	PLA Translucent	Purple	resmi
+GFA17	P1	#B8ACD680	PLA Translucent	Lavender	resmi
+GFA05	M1	#F772A4FF,#00918BFF	PLA Silk	South Beach	resmi
+GFA05	M4	#7F3696FF,#006EC9FF	PLA Silk	Aurora Purple	resmi
+GFA05	M8	#EC984CFF,#6CD4BCFF,#A66EB9FF,#D87694FF	PLA Silk	Dawn Radiance	resmi
+GFU03	K0	#000000FF	TPU 90A	Black	resmi
+GFU03	W1	#FFFFFFFF	TPU 90A	White	resmi
+GFU04	A1	#F68B1BFF	TPU 85A	Neon Orange	resmi
+GFU04	G0	#C3E2D6FF	TPU 85A	Light Cyan	resmi
+GFU03	M0	#40B6E4FF,#FFFFFFFF	TPU 90A	Frozen	resmi
+GFU03	M1	#D21B3CFF,#F1AAA8FF	TPU 90A	Blaze	resmi
+GFS02	W1	#FFFFFFFF	Support for PLA	White	resmi
+GFA10	K0	#000000FF	PLA Tough+	Black	resmi
+GFA10	D0	#AFB1AEFF	PLA Tough+	Gray	resmi
+GFA10	D1	#959698FF	PLA Tough+	Silver	resmi
+GFA10	W0	#FFFFFFFF	PLA Tough+	White	resmi
+GFA10	A0	#DC3A27FF	PLA Tough+	Orange	resmi
+GFA10	Y0	#F4D53FFF	PLA Tough+	Yellow	resmi
+GFA10	B0	#009BD8FF	PLA Tough+	Cyan	resmi
+GFA02	D2	#43403DFF	PLA Metal	Iron Gray Metallic	resmi
+GFA02	Y1	#B39B84FF	PLA Metal	Iridium Gold Metallic	resmi
+GFA02	G2	#1D7C6AFF	PLA Metal	Oxide Green Metallic	resmi
+GFA02	B2	#39699EFF	PLA Metal	Cobalt Blue Metallic	resmi
+GFA02	N3	#AA6443FF	PLA Metal	Copper Brown Metallic	resmi
+GFA18	B1	#004EA8FF	PLA Lite	Blue	resmi
+GFA18	Y1	#FFB549FF	PLA Lite	Sunflower Yellow	resmi
+GFA18	G1	#00BB31FF	PLA Lite	Green	resmi
+GFA18	A1	#FF671FFF	PLA Lite	Orange	resmi
+GFA18	P0	#ECC3B2FF	PLA Lite	Matte Beige	resmi
+GFA18	N0	#745335FF	PLA Lite	Cocoa Brown	resmi
+GFA18	D1	#8C8B8CFF	PLA Lite	Dark Gray	resmi
+GFA05	T7	#720062FF,#3A913FFF	PLA Silk	Mystic Magenta	resmi
+GFA05	T9	#00629BFF,#000000FF	PLA Silk	Phantom Blue	resmi
+GFU03	B1	#7EB4E180	TPU 90A	Crystal Blue	resmi
+GFU03	D0	#9EA2A2FF	TPU 90A	Quicksilver	resmi
+GFU04	P0	#F3CFB2FF	TPU 85A	Rose Beige/Flesh	resmi
+GFU03	P1	#D6ABFF80	TPU 90A	Grape Jelly	resmi
+GFU04	K0	#000000FF	TPU 85A	Black	resmi
+GFU04	G1	#CDEA80FF	TPU 85A	Lime Green	resmi
+GFU03	N0	#5C4738FF	TPU 90A	Cocoa Brown	resmi
+GFG00	K00	#000000FF	PETG Basic	Black	resmi
+GFG00	W00	#FFFFFFFF	PETG Basic	White	resmi
+GFG00	D00	#7F7E83FF	PETG Basic	Gray	resmi
+GFG00	Y00	#FCE300FF	PETG Basic	Yellow	resmi
+GFG00	R00	#D6001CFF	PETG Basic	Red	resmi
+GFG00	B00	#001489FF	PETG Basic	Reflex Blue	resmi
+GFG00	N00	#4F2C1DFF	PETG Basic	Dark Brown	resmi
+GFG00	G00	#009639FF	PETG Basic	Green	resmi
+GFG00	A00	#FF671FFF	PETG Basic	Orange	resmi
+GFG00	G01	#034638FF	PETG Basic	Pine Green	resmi
+GFG00	B01	#0086D6FF	PETG Basic	Navy Blue	resmi
+GFG00	D01	#688197FF	PETG Basic	Misty Blue	resmi
+GFG00	Y01	#DBC8B6FF	PETG Basic	Dark Beige	resmi
+GFA19	W00	#FFFFFFFF	PLA Pure	Pure White	resmi
+GFA19	K00	#000000FF	PLA Pure	Absolute Black	resmi
+GFA19	P00	#F7CED7FF	PLA Pure	Milky Pink	resmi
+GFA19	B00	#A4DBE8FF	PLA Pure	Baby Blue	resmi
+GFA19	A00	#FFB673FF	PLA Pure	Apricot	resmi
+GFG00	P01	#8A75D1FF	PETG Basic	Purple	resmi
+GFG00	Y04	#FFB81CFF	PETG Basic	Sunflower Yellow	resmi
+GFG00	G04	#97D700FF	PETG Basic	Bright Green	resmi
+GFG00	P02	#F277C6FF	PETG Basic	Hot Pink	resmi
+GFG03	W00	#FFFFFFFF	PETG Matte	White	resmi
+GFG03	K00	#000000FF	PETG Matte	Black	resmi
+GFG03	G00	#C0DF16FF	PETG Matte	Lime	resmi
+GFG03	D00	#7F7E83FF	PETG Matte	Gray	resmi
+GFG03	P00	#FABBCBFF	PETG Matte	Pink	resmi
+GFG03	B00	#B9D9EBFF	PETG Matte	Baby Blue	resmi
+GFG03	P02	#A7A4E0FF	PETG Matte	Violet	resmi
+GFG03	G01	#BCE194FF	PETG Matte	Avocado Green	resmi
+GFS00	VID:S00-W0			Nature	komunitas
+GFG00	VID:G00-D0			Gray	komunitas
+GFS01	VID:S01-G1			Green	komunitas
+GFG00	VID:G00-B0			Blue	komunitas
+GFA00	VID:A00-G0			Green	komunitas
+GFG00	VID:G00-G8			Lime Green	komunitas
