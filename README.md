@@ -6,17 +6,23 @@ Small Android app that reads the RFID tag on a Bambu Lab spool, shows the **offi
 ## Features
 - **Scan**: hold the phone against a spool to see the colour name, filament type, variant code, hex,
   weight, temperatures and production date.
-- **Stock input**: after a scan, enter `xx spool(s)` and save. The new number **replaces** the old one.
-- **Stock page**: every filament in the database, grouped by type, including colours with 0 stock.
-  Tap a row to edit its count; the search box filters by colour or type.
+- **Stock input**: after a scan, the current stock is shown with **−1 / +1** buttons (saved instantly), or type
+  `xx spool(s)` and press Save. A typed number **replaces** the old one.
+- **Stock page**: every filament in the database, grouped by type in collapsible dropdowns (all closed when opened),
+  including colours with 0 stock. Order: PLA Basic, PLA Matte, PETG Basic, PETG Translucent, PLA Wood, PLA Glow,
+  PLA Marble (the last three abrasive), then everything else A–Z. Each row has −1 / +1; tap the number to type one.
+- **A2L / H2C tags** on each type, from the official spec pages (bambulab.com/en/a2l/specs, /h2c/specs).
+  Amber "A2L · HS" = needs a hardened-steel nozzle on the A2L.
 - **Reset to 0**: sets every count to 0 (asks for confirmation).
 - **Export to PDF**: A4 report of filaments with stock **> 0** only, grouped by type, with subtotals.
+- **Save backup / Load backup**: CSV file (`key,type,name,code,colors,qty`) you can keep outside the phone
+  and open in Excel. Loading replaces the current stock after a confirmation.
 
 ## Privacy & safety
 - Only the `NFC` permission. **No INTERNET permission**, so the app cannot send data anywhere.
 - **Read-only**: it never writes to a tag.
-- Stock counts are stored privately on the phone. Uninstalling the app deletes them
-  (see *Signing key* below: keep the same key so updates don't require an uninstall).
+- Stock counts are stored privately on the phone. Uninstalling the app deletes them, so use **Save backup**
+  before uninstalling or updating.
 - No third-party libraries; only the Android framework.
 
 ## How it works
