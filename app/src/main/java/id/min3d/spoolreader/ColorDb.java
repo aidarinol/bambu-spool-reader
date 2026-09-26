@@ -7,7 +7,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Colour-name lookup. Table = Bambu Studio's official filaments_color_codes.json
@@ -15,30 +18,42 @@ import java.util.List;
  */
 public final class ColorDb {
 
+    public static final String OTHER_TYPE = "Other";
+
     public static final class Row {
-        final String filaId, colorCode, filaType, name, source;
-        final List<String> colors;
+        public final String filaId, colorCode, name, source;
+        public String filaType;
+        public final List<String> colors;
+        /** Stock key this row counts towards (community duplicates point at the official row). */
+        public String stockKey;
 
         Row(String[] f) {
             filaId = f[0];
             colorCode = f[1];
-            colors = f[2].isEmpty() ? new ArrayList<>() : Arrays.asList(f[2].split(","));
+            colors = f[2].isEmpty() ? new ArrayList<String>() : Arrays.asList(f[2].split(","));
             filaType = f[3];
             name = f[4];
             source = f[5];
+            stockKey = filaId + "|" + colorCode;
+        }
+
+        public boolean official() {
+            return "resmi".equals(source);
         }
     }
 
     public static final class Match {
+        public final Row row;
         public final String name;
-        /** how it matched: "kode" | "hex" | "hex1" | "komunitas" */
+        /** how it matched: "code" | "hex" | "hex1" | "community" */
         public final String how;
         public final String filaType;
 
-        Match(String name, String how, String filaType) {
-            this.name = name;
+        Match(Row row, String how) {
+            this.row = row;
+            this.name = row.name;
             this.how = how;
-            this.filaType = filaType;
+            this.filaType = row.filaType;
         }
     }
 
@@ -53,10 +68,34 @@ public final class ColorDb {
                 if (f.length >= 6) rows.add(new Row(f));
             }
         }
+        // Fill missing types from official rows with the same material ID; alias community duplicates.
+        Map<String, String> typeById = new HashMap<>();
+        Map<String, Row> officialByIdName = new HashMap<>();
+        for (Row r : rows) {
+            if (!r.official()) continue;
+            if (!r.filaType.isEmpty()) typeById.put(r.filaId, r.filaType);
+            officialByIdName.put(r.filaId + "|" + r.name, r);
+        }
+        for (Row r : rows) {
+            if (r.official()) continue;
+            if (r.filaType.isEmpty()) {
+                String t = typeById.get(r.filaId);
+                r.filaType = t != null ? t : OTHER_TYPE;
+            }
+            Row off = officialByIdName.get(r.filaId + "|" + r.name);
+            if (off != null) r.stockKey = off.stockKey;
+        }
     }
 
     public int size() {
         return rows.size();
+    }
+
+    /** Rows that appear in the stock list (one per stock key). */
+    public List<Row> stockRows() {
+        List<Row> out = new ArrayList<>();
+        for (Row r : rows) if (r.stockKey.equals(r.filaId + "|" + r.colorCode)) out.add(r);
+        return Collections.unmodifiableList(out);
     }
 
     public Match lookup(SpoolData d) {
@@ -65,21 +104,21 @@ public final class ColorDb {
         String code = dash >= 0 ? d.variantId.substring(dash + 1) : null;
         // 1) official: material ID + colour code from the variant ID (most precise)
         if (code != null) for (Row r : rows)
-            if ("resmi".equals(r.source) && r.filaId.equals(mid) && r.colorCode.equals(code))
-                return new Match(r.name, "kode", r.filaType);
+            if (r.official() && r.filaId.equals(mid) && r.colorCode.equals(code))
+                return new Match(r, "code");
         // 2) official: material ID + full colour list
         for (Row r : rows)
-            if ("resmi".equals(r.source) && r.filaId.equals(mid) && sameColors(r.colors, d.colors))
-                return new Match(r.name, "hex", r.filaType);
+            if (r.official() && r.filaId.equals(mid) && sameColors(r.colors, d.colors))
+                return new Match(r, "hex");
         // 3) official: material ID + first colour only
         if (!d.colors.isEmpty()) for (Row r : rows)
-            if ("resmi".equals(r.source) && r.filaId.equals(mid) && !r.colors.isEmpty()
+            if (r.official() && r.filaId.equals(mid) && !r.colors.isEmpty()
                     && r.colors.get(0).equalsIgnoreCase(d.colors.get(0)))
-                return new Match(r.name, "hex1", r.filaType);
+                return new Match(r, "hex1");
         // 4) community table keyed by full variant ID
         for (Row r : rows)
-            if ("komunitas".equals(r.source) && r.filaId.equals(mid) && r.colorCode.equals("VID:" + d.variantId))
-                return new Match(r.name, "komunitas", r.filaType);
+            if (!r.official() && r.filaId.equals(mid) && r.colorCode.equals("VID:" + d.variantId))
+                return new Match(r, "community");
         return null;
     }
 
