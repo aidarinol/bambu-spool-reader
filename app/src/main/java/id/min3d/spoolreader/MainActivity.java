@@ -52,15 +52,15 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private static final int REQ_SAVE_BACKUP = 43;
     private static final int REQ_LOAD_BACKUP = 44;
 
-    private static final int BG = Color.rgb(24, 24, 27);
-    private static final int CARD = Color.rgb(39, 39, 42);
-    private static final int LINE = Color.rgb(63, 63, 70);
-    private static final int FG = Color.rgb(244, 244, 245);
-    private static final int MUTED = Color.rgb(161, 161, 170);
-    private static final int ACCENT = Color.rgb(34, 197, 94);
-    private static final int WARN = Color.rgb(250, 204, 21);
-    private static final int ERR = Color.rgb(248, 113, 113);
-    private static final int BLUE = Color.rgb(96, 165, 250);
+    static final int BG = Color.rgb(24, 24, 27);
+    static final int CARD = Color.rgb(39, 39, 42);
+    static final int LINE = Color.rgb(63, 63, 70);
+    static final int FG = Color.rgb(244, 244, 245);
+    static final int MUTED = Color.rgb(161, 161, 170);
+    static final int ACCENT = Color.rgb(34, 197, 94);
+    static final int WARN = Color.rgb(250, 204, 21);
+    static final int ERR = Color.rgb(248, 113, 113);
+    static final int BLUE = Color.rgb(96, 165, 250);
 
     private NfcAdapter nfc;
     private ColorDb db;
@@ -68,11 +68,11 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
 
     private LinearLayout content;
     private ScrollView scroll;
-    private Button tabScan, tabStock;
+    private Button tabScan, tabStock, tabProducts;
     private TextView status;
     private boolean nfcWasOff;
 
-    private boolean onStockPage;
+    private boolean onStockPage, onProductsPage;
     private Result lastResult;
     private String stockFilter = "";
 
@@ -126,8 +126,11 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             showStockPage();
             scroll.scrollTo(0, 0);
         });
+        tabProducts = tab("3D");
+        tabProducts.setOnClickListener(v -> showProductsPage());
         bar.addView(tabScan);
         bar.addView(tabStock);
+        bar.addView(tabProducts);
         root.addView(bar);
 
         scroll = new ScrollView(this);
@@ -146,17 +149,17 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     protected void onResume() {
         super.onResume();
         if (nfc == null) {
-            if (!onStockPage) showMessage("This phone has no NFC.", ERR, false);
+            if (onScan()) showMessage("This phone has no NFC.", ERR, false);
             return;
         }
         if (!nfc.isEnabled()) {
-            if (!onStockPage) showMessage("NFC is turned off. Turn it on, then come back to the app.", WARN, true);
+            if (onScan()) showMessage("NFC is turned off. Turn it on, then come back to the app.", WARN, true);
             nfcWasOff = true;
             return;
         }
         if (nfcWasOff) {
             nfcWasOff = false;
-            if (!onStockPage) showScanPage();
+            if (onScan()) showScanPage();
         }
         Bundle opts = new Bundle();
         opts.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
@@ -172,7 +175,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
 
     @Override
     public void onBackPressed() {
-        if (onStockPage) showScanPage();
+        if (!onScan()) showScanPage();
         else super.onBackPressed();
     }
 
@@ -182,7 +185,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     @Override
     public void onTagDiscovered(Tag tag) {
         runOnUiThread(() -> {
-            if (!onStockPage) setStatus("Reading tag… keep the phone still", MUTED);
+            if (onScan()) setStatus("Reading tag… keep the phone still", MUTED);
         });
         final Result r = readTag(tag);
         runOnUiThread(() -> {
@@ -241,6 +244,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
 
     private void showScanPage() {
         onStockPage = false;
+        onProductsPage = false;
         highlightTabs();
         if (lastResult == null) showIdle();
         else if (lastResult.error != null) showMessage(lastResult.error, ERR, false);
@@ -417,10 +421,44 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         content.addView(status);
     }
 
+    // ---------------- 3D products page ----------------
+
+    private void showProductsPage() {
+        onStockPage = false;
+        onProductsPage = true;
+        highlightTabs();
+        content.removeAllViews();
+        content.addView(text("3D products", 24, FG, true));
+        TextView sub = text("Turn a product around and try it in the filament colours you have in stock.", 14, MUTED, false);
+        sub.setPadding(0, dp(2), 0, dp(12));
+        content.addView(sub);
+        for (final ProductActivity.Product p : ProductActivity.PRODUCTS) {
+            LinearLayout c = card();
+            c.addView(text(p.title, 18, FG, true));
+            TextView d = text(p.description, 13, MUTED, false);
+            d.setPadding(0, dp(2), 0, dp(10));
+            c.addView(d);
+            LinearLayout slots = new LinearLayout(this);
+            slots.setOrientation(LinearLayout.HORIZONTAL);
+            for (String s : p.slotLabels) slots.addView(chip(s, BLUE));
+            c.addView(slots);
+            Button open = button("Open 3D view", true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(0, dp(12), 0, 0);
+            c.addView(open, lp);
+            open.setOnClickListener(v -> startActivity(new Intent(this, ProductActivity.class).putExtra(ProductActivity.EXTRA_ID, p.id)));
+            c.setOnClickListener(v -> open.performClick());
+            content.addView(c);
+            spacer(12);
+        }
+        scroll.scrollTo(0, 0);
+    }
+
     // ---------------- Stock page ----------------
 
     private void showStockPage() {
         onStockPage = true;
+        onProductsPage = false;
         highlightTabs();
         content.removeAllViews();
         if (db == null) {
@@ -954,8 +992,13 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     }
 
     private void highlightTabs() {
-        styleTab(tabScan, !onStockPage);
+        styleTab(tabScan, onScan());
         styleTab(tabStock, onStockPage);
+        styleTab(tabProducts, onProductsPage);
+    }
+
+    private boolean onScan() {
+        return !onStockPage && !onProductsPage;
     }
 
     private Button tab(String label) {
@@ -965,7 +1008,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         b.setTextSize(14);
         b.setMinWidth(0);
         b.setMinimumWidth(0);
-        b.setPadding(dp(16), 0, dp(16), 0);
+        b.setPadding(dp(14), 0, dp(14), 0);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(38));
         lp.setMargins(dp(4), 0, 0, 0);
         b.setLayoutParams(lp);
@@ -1076,7 +1119,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     }
 
     /** "#RRGGBBAA" -> Android ARGB int. */
-    private static int argb(String hex) {
+    static int argb(String hex) {
         try {
             long v = Long.parseLong(hex.substring(1), 16);
             int r = (int) (v >> 24) & 0xFF, g = (int) (v >> 16) & 0xFF, b = (int) (v >> 8) & 0xFF, a = (int) v & 0xFF;
