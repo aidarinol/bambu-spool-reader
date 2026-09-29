@@ -53,9 +53,20 @@ public final class WebSync {
         return prefs.getString("last", "");
     }
 
+    /** True while a stock change has not reached the website yet (offline, error, app closed early). */
+    public boolean pending() {
+        return prefs.getBoolean("pending", false);
+    }
+
+    /** Called when the app comes to the foreground: resend if an earlier sync did not get through. */
+    public void retryIfPending(StockStore stock, ColorDb db) {
+        if (hasToken() && db != null && pending() && pending == null) syncNow(stock, db, null);
+    }
+
     /** Debounced automatic sync after stock edits (3 s after the last change). */
     public void schedule(final StockStore stock, final ColorDb db) {
         if (!hasToken() || db == null) return;
+        prefs.edit().putBoolean("pending", true).apply();
         if (pending != null) main.removeCallbacks(pending);
         pending = () -> {
             pending = null;
@@ -101,7 +112,8 @@ public final class WebSync {
             final boolean fOk = ok;
             final String fMsg = msg;
             String stamp = new java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(new java.util.Date());
-            prefs.edit().putString("last", (fOk ? "✓ " : "✗ ") + stamp + " – " + fMsg).apply();
+            prefs.edit().putString("last", (fOk ? "✓ " : "✗ ") + stamp + " – " + fMsg + (fOk ? "" : " (retried automatically when the app is opened again)"))
+                    .putBoolean("pending", !fOk).apply();
             if (cb != null) main.post(() -> cb.done(fOk, fMsg));
         }).start();
     }

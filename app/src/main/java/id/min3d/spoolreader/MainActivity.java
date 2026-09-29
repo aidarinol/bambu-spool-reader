@@ -151,6 +151,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     @Override
     protected void onResume() {
         super.onResume();
+        if (web != null) web.retryIfPending(stock, db);
         if (nfc == null) {
             if (onScan()) showMessage("This phone has no NFC.", ERR, false);
             return;
