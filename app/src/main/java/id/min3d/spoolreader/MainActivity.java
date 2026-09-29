@@ -65,6 +65,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private NfcAdapter nfc;
     private ColorDb db;
     private StockStore stock;
+    private WebSync web;
 
     private LinearLayout content;
     private ScrollView scroll;
@@ -105,6 +106,8 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             db = null;
         }
         stock = new StockStore(this);
+        web = new WebSync(this);
+        stock.onChange = () -> web.schedule(stock, db);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -493,6 +496,29 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         content.addView(row2);
         saveB.setOnClickListener(v -> startSaveBackup());
         loadB.setOnClickListener(v -> startLoadBackup());
+
+        LinearLayout row3 = new LinearLayout(this);
+        row3.setOrientation(LinearLayout.HORIZONTAL);
+        row3.setPadding(0, dp(8), 0, 0);
+        Button syncB = button("Sync website", true);
+        Button tokenB = button("Website token", false);
+        row3.addView(syncB, halfLeft());
+        row3.addView(tokenB, half());
+        content.addView(row3);
+        final TextView webStatus = text(web.hasToken()
+                ? (web.lastStatus().isEmpty() ? "min3dstudio.com: auto-sync on" : web.lastStatus())
+                : "min3dstudio.com: set the website token to show in-stock colours on the website.", 11, MUTED, false);
+        webStatus.setPadding(0, dp(4), 0, 0);
+        content.addView(webStatus);
+        syncB.setOnClickListener(v -> {
+            if (!web.hasToken()) {
+                askWebToken(webStatus);
+                return;
+            }
+            webStatus.setText("Syncing to min3dstudio.com…");
+            web.syncNow(stock, db, (ok, msg) -> webStatus.setText(web.lastStatus()));
+        });
+        tokenB.setOnClickListener(v -> askWebToken(webStatus));
 
         final EditText search = new EditText(this);
         search.setHint("Search colour or type…");
@@ -1021,6 +1047,28 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         g.setColor(active ? FG : CARD);
         b.setBackground(g);
         b.setTextColor(active ? BG : FG);
+    }
+
+    private void askWebToken(final TextView status) {
+        final EditText in = new EditText(this);
+        in.setSingleLine(true);
+        in.setHint("m3d_…");
+        in.setText(web.token());
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle("Website token")
+                .setMessage("Paste the sync token for min3dstudio.com. Stock changes are then sent to the website automatically.")
+                .setView(in)
+                .setPositiveButton("Save & sync", (dlg, w) -> {
+                    web.setToken(in.getText().toString());
+                    if (!web.hasToken()) {
+                        status.setText("Website sync off (no token).");
+                        return;
+                    }
+                    status.setText("Syncing to min3dstudio.com…");
+                    web.syncNow(stock, db, (ok, msg) -> status.setText(web.lastStatus()));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private Button button(String label, boolean primary) {

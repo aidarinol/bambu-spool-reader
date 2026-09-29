@@ -49,6 +49,13 @@ public final class StockStore {
 
     private final SharedPreferences qty, custom;
 
+    /** Called after every change to the counts (used for the automatic website sync). */
+    public Runnable onChange;
+
+    private void changed() {
+        if (onChange != null) onChange.run();
+    }
+
     public StockStore(Context ctx) {
         qty = ctx.getSharedPreferences(PREF_QTY, Context.MODE_PRIVATE);
         custom = ctx.getSharedPreferences(PREF_CUSTOM, Context.MODE_PRIVATE);
@@ -61,6 +68,7 @@ public final class StockStore {
     /** Overwrites the old count. */
     public void set(String key, int n) {
         qty.edit().putInt(key, Math.max(0, Math.min(9999, n))).apply();
+        changed();
     }
 
     /** Remembers a spool that is not in the colour table so it still shows up in the stock list. */
@@ -71,6 +79,7 @@ public final class StockStore {
     /** Sets every count to 0 (the list of filaments itself stays). */
     public void resetAll() {
         qty.edit().clear().apply();
+        changed();
     }
 
     /** All filaments (table + remembered unknowns), grouped by type; most-stocked types and colours first. */
@@ -188,6 +197,7 @@ public final class StockStore {
         SharedPreferences.Editor c = custom.edit();
         for (Map.Entry<String, String> e : b.custom.entrySet()) c.putString(e.getKey(), e.getValue());
         c.apply();
+        changed();
     }
 
     // ---------------- helpers ----------------
