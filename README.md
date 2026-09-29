@@ -27,7 +27,7 @@ Small Android app that reads the RFID tag on a Bambu Lab spool, shows the **offi
   and open in Excel. Loading replaces the current stock after a confirmation.
 
 ## Privacy & safety
-- Only the `NFC` permission. **No INTERNET permission**, so the app cannot send data anywhere.
+- Permissions: `NFC`, plus `INTERNET` used only for the optional *Sync website* feature: when a website token is set, the list of in-stock colours (type, colour name, hex, spool count) is sent to the min3dstudio.com database so the website only offers colours in stock. Without a token nothing is sent.
 - **Read-only**: it never writes to a tag.
 - Stock counts are stored privately on the phone. Uninstalling the app deletes them, so use **Save backup**
   before uninstalling or updating.
