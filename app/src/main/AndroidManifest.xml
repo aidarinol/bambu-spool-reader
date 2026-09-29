@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Only NFC. No INTERNET permission: the app cannot send data anywhere. -->
+    <!-- NFC reads spools. INTERNET only sends the in-stock colour list to min3dstudio.com (needs a token). -->
     <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
     <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
