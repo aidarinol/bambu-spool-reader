@@ -4,6 +4,8 @@
     <!-- NFC reads spools. INTERNET only sends the in-stock colour list to min3dstudio.com (needs a token). -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app update: lets the app hand a downloaded update (same signing key) to Android's installer; Android always asks to confirm. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
     <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
