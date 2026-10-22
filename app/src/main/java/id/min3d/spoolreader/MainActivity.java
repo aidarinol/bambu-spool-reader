@@ -66,6 +66,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private ColorDb db;
     private StockStore stock;
     private WebSync web;
+    private Updater updater;
 
     private LinearLayout content;
     private ScrollView scroll;
@@ -109,6 +110,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         }
         stock = new StockStore(this);
         web = new WebSync(this);
+        updater = new Updater(this);
         stock.onChange = () -> web.schedule(stock, db);
         // counts changed on min3dstudio.com (owner page) arrive here: redraw the stock page
         web.onRemoteChanged = () -> {
@@ -161,6 +163,10 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     protected void onResume() {
         super.onResume();
         if (web != null) web.startAuto(stock, db); // automatic two-way sync while the app is open
+        if (updater != null) {
+            updater.onResume();    // continue an update after "Install unknown apps" was allowed
+            updater.checkIfDue();  // new version on GitHub? (at most every 6 h)
+        }
         if (nfc == null) {
             if (onScan()) showMessage("This phone has no NFC.", ERR, false);
             return;
@@ -178,6 +184,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         opts.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
         nfc.enableReaderMode(this, this,
                 NfcAdapter.FLAG_READER_NFC_A | NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK, opts);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (updater != null) updater.release();
+        super.onDestroy();
     }
 
     @Override
@@ -525,6 +537,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             });
         }
         content.addView(webStatus);
+
+        // App version + in-app update (tap to check now)
+        final TextView ver = text(updater.versionLine(), 11, ACCENT, false);
+        ver.setPadding(0, dp(6), 0, 0);
+        ver.setOnClickListener(v -> updater.check(true, ver));
+        content.addView(ver);
 
         final EditText search = new EditText(this);
         search.setHint("Search colour or type…");
