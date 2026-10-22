@@ -80,6 +80,8 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     /** Stock page state: which type groups are open (all closed when the page is opened from the tab). */
     private final Set<String> expanded = new HashSet<>();
     private TextView summaryView;
+    /** Website sync status line on the Stock page (updated after every automatic sync). */
+    private TextView webStatusView;
     private final List<GroupView> groupViews = new ArrayList<>();
 
     private static final class GroupView {
@@ -112,6 +114,9 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         web.onRemoteChanged = () -> {
             if (onStockPage) refreshStockPageKeepingScroll();
         };
+        web.onStatus = () -> {
+            if (webStatusView != null && onStockPage) webStatusView.setText(webStatusText());
+        };
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -132,7 +137,6 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
             stockFilter = "";
             showStockPage();
             scroll.scrollTo(0, 0);
-            web.onForeground(stock, db);
         });
         tabProducts = tab("3D");
         tabProducts.setOnClickListener(v -> showProductsPage());
@@ -156,7 +160,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     @Override
     protected void onResume() {
         super.onResume();
-        if (web != null) web.onForeground(stock, db);
+        if (web != null) web.startAuto(stock, db); // automatic two-way sync while the app is open
         if (nfc == null) {
             if (onScan()) showMessage("This phone has no NFC.", ERR, false);
             return;
@@ -179,6 +183,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     @Override
     protected void onPause() {
         super.onPause();
+        if (web != null) web.stopAuto();
         if (nfc != null) nfc.disableReaderMode(this);
     }
 
@@ -503,28 +508,23 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         saveB.setOnClickListener(v -> startSaveBackup());
         loadB.setOnClickListener(v -> startLoadBackup());
 
-        LinearLayout row3 = new LinearLayout(this);
-        row3.setOrientation(LinearLayout.HORIZONTAL);
-        row3.setPadding(0, dp(8), 0, 0);
-        Button syncB = button("Sync website", true);
-        Button tokenB = button("Website token", false);
-        row3.addView(syncB, halfLeft());
-        row3.addView(tokenB, half());
-        content.addView(row3);
-        final TextView webStatus = text(web.hasToken()
-                ? (web.lastStatus().isEmpty() ? "min3dstudio.com: two-way sync on (stock is shared with the owner page)" : web.lastStatus())
-                : "min3dstudio.com: set the website token to share this stock with the owner page on the website.", 11, MUTED, false);
-        webStatus.setPadding(0, dp(4), 0, 0);
+        // Website sync is automatic (no sync button): only the token has to be set once.
+        final TextView webStatus = text(webStatusText(), 11, MUTED, false);
+        webStatus.setPadding(0, dp(8), 0, 0);
+        webStatusView = webStatus;
+        if (!web.hasToken()) {
+            Button tokenB = button("Website token", false);
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            tp.setMargins(0, dp(8), 0, 0);
+            content.addView(tokenB, tp);
+            tokenB.setOnClickListener(v -> askWebToken(webStatus));
+        } else {
+            webStatus.setOnLongClickListener(v -> {
+                askWebToken(webStatus); // change the token: long-press the status line
+                return true;
+            });
+        }
         content.addView(webStatus);
-        syncB.setOnClickListener(v -> {
-            if (!web.hasToken()) {
-                askWebToken(webStatus);
-                return;
-            }
-            webStatus.setText("Syncing with min3dstudio.com…");
-            web.syncNow(stock, db, (ok, msg) -> webStatus.setText(web.lastStatus()));
-        });
-        tokenB.setOnClickListener(v -> askWebToken(webStatus));
 
         final EditText search = new EditText(this);
         search.setHint("Search colour or type…");
@@ -1055,6 +1055,12 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         b.setTextColor(active ? BG : FG);
     }
 
+    private String webStatusText() {
+        if (!web.hasToken()) return "min3dstudio.com: set the website token once to share this stock with the owner page on the website.";
+        String last = web.lastStatus();
+        return "⇄ Auto-sync with min3dstudio.com is on" + (last.isEmpty() ? "." : "\n" + last);
+    }
+
     private void askWebToken(final TextView status) {
         final EditText in = new EditText(this);
         in.setSingleLine(true);
@@ -1070,8 +1076,8 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
                         status.setText("Website sync off (no token).");
                         return;
                     }
-                    status.setText("Syncing to min3dstudio.com…");
-                    web.syncNow(stock, db, (ok, msg) -> status.setText(web.lastStatus()));
+                    status.setText("Syncing with min3dstudio.com…");
+                    web.syncNow(stock, db, (ok, msg) -> refreshStockPageKeepingScroll());
                 })
                 .setNegativeButton("Cancel", null)
                 .show();

@@ -71,6 +71,7 @@ public class ProductActivity extends Activity {
 
     private Product product;
     private ColorDb db;
+    private WebSync web;
     private StockStore stock;
     private SharedPreferences prefs;
     private ModelView viewer;
@@ -152,10 +153,19 @@ public class ProductActivity extends Activity {
         viewer.onResume();
         loadStockAndChoices(); // stock may have changed on the Stock page
         renderSlots();
+        if (web == null) {
+            web = new WebSync(this);
+            web.onRemoteChanged = () -> { // stock changed on the website while this screen is open
+                loadStockAndChoices();
+                renderSlots();
+            };
+        }
+        if (db != null) web.startAuto(stock, db);
     }
 
     @Override
     protected void onPause() {
+        if (web != null) web.stopAuto();
         if (viewer != null) viewer.onPause();
         super.onPause();
     }

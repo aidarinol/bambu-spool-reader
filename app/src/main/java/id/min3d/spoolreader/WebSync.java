@@ -21,6 +21,9 @@ import java.util.Map;
 /**
  * Two-way stock sync with the min3dstudio.com database (Supabase). The database is the shared stock list:
  * the owner can change counts on the website too.
+ * Fully automatic while the app is open: changes on this phone are uploaded 1.5 s after the last tap, and every
+ * {@link #POLL_MS} ms the app asks the database only for rows changed since the last check (usually none).
+ * When the app is closed nothing runs; the stock is brought up to date as soon as the app is opened again.
  * <ul>
  *   <li>First run of this version: the whole stock on this phone is uploaded once (the phone was the only
  *       source until now). After that the old one-way sync is refused by the server.</li>
@@ -40,6 +43,9 @@ public final class WebSync {
 
     private static final String PREF = "web_sync";
     private static final String FULL_DONE = "two_way_full_done";
+    private static final String SINCE = "pull_since";
+    static final long POLL_MS = 8000;
+    static final long PUSH_DELAY_MS = 1500;
     private final SharedPreferences prefs;
     private final Handler main = new Handler(Looper.getMainLooper());
     private Runnable pending;
@@ -48,6 +54,36 @@ public final class WebSync {
 
     /** Runs on the main thread after the download changed counts on this phone (refresh the screen). */
     public Runnable onRemoteChanged;
+    /** Runs on the main thread after every sync attempt (update the status line). */
+    public Runnable onStatus;
+
+    private StockStore autoStock;
+    private ColorDb autoDb;
+    private final Runnable tick = new Runnable() {
+        @Override
+        public void run() {
+            if (autoStock == null) return;
+            if (!running && pending == null && hasToken() && autoDb != null) {
+                if (!prefs.getBoolean(FULL_DONE, false) || !autoStock.dirty().isEmpty()) syncNow(autoStock, autoDb, null);
+                else pullChanges(autoStock, autoDb);
+            }
+            main.postDelayed(this, POLL_MS);
+        }
+    };
+
+    /** Start automatic two-way sync (call from onResume). Syncs right away, then checks every few seconds. */
+    public void startAuto(StockStore stock, ColorDb db) {
+        autoStock = stock;
+        autoDb = db;
+        main.removeCallbacks(tick);
+        main.post(tick);
+    }
+
+    /** Stop the automatic checks (call from onPause); a pending upload still goes out. */
+    public void stopAuto() {
+        main.removeCallbacks(tick);
+        autoStock = null;
+    }
 
     public WebSync(Context ctx) {
         prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
@@ -74,14 +110,7 @@ public final class WebSync {
         return prefs.getBoolean("pending", false);
     }
 
-    /** App came to the foreground: upload what is pending and download the latest list (at most every 15 s). */
-    public void onForeground(StockStore stock, ColorDb db) {
-        if (!hasToken() || db == null || pending != null) return;
-        if (System.currentTimeMillis() - lastPull < 15000 && !pending()) return;
-        syncNow(stock, db, null);
-    }
-
-    /** Debounced automatic sync after stock edits (3 s after the last change). */
+    /** Debounced automatic upload after stock edits (1.5 s after the last change). */
     public void schedule(final StockStore stock, final ColorDb db) {
         if (!hasToken() || db == null) return;
         prefs.edit().putBoolean("pending", true).apply();
@@ -90,7 +119,7 @@ public final class WebSync {
             pending = null;
             syncNow(stock, db, null);
         };
-        main.postDelayed(pending, 3000);
+        main.postDelayed(pending, PUSH_DELAY_MS);
     }
 
     public void syncNow(final StockStore stock, final ColorDb db, final Callback cb) {
@@ -130,13 +159,13 @@ public final class WebSync {
                     resp = post("app_pull_stock", body);
                 }
                 stock.confirmPushed(push);
-                if (full) prefs.edit().putBoolean(FULL_DONE, true).apply();
+                if (full) prefs.edit().putBoolean(FULL_DONE, true).remove(SINCE).apply();
                 changed = stock.applyRemote(rows(resp.optJSONArray("rows")), db);
                 lastPull = System.currentTimeMillis();
                 ok = true;
                 int up = push.size();
                 msg = full ? "First full upload done – stock is now shared with min3dstudio.com."
-                        : (up > 0 ? "Sent " + up + " change(s)" : "Up to date")
+                        : (up > 0 ? "Sent " + up + " change(s) to the website" : "Up to date")
                         + (changed > 0 ? ", received " + changed + " change(s) from the website" : "") + ".";
             } catch (SyncError e) {
                 msg = e.getMessage();
@@ -147,12 +176,50 @@ public final class WebSync {
             final boolean fOk = ok;
             final String fMsg = msg;
             final int fChanged = changed;
-            String stamp = new java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(new java.util.Date());
-            prefs.edit().putString("last", (fOk ? "✓ " : "✗ ") + stamp + " – " + fMsg + (fOk ? "" : " (retried automatically when the app is opened again)"))
+            String stamp = new java.text.SimpleDateFormat("d MMM HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+            prefs.edit().putString("last", (fOk ? "✓ " : "✗ ") + stamp + " – " + fMsg + (fOk ? "" : " (will keep trying automatically)"))
                     .putBoolean("pending", !fOk || !stock.dirty().isEmpty()).apply();
             main.post(() -> {
                 if (fChanged > 0 && onRemoteChanged != null) onRemoteChanged.run();
+                if (onStatus != null) onStatus.run();
                 if (cb != null) cb.done(fOk, fMsg);
+            });
+        }).start();
+    }
+
+    /** Light check: only rows changed in the database since the last check (usually none). */
+    private void pullChanges(final StockStore stock, final ColorDb db) {
+        final String token = token();
+        final String since = prefs.getString(SINCE, "");
+        running = true;
+        new Thread(() -> {
+            boolean ok = false;
+            int changed = 0;
+            String msg;
+            try {
+                JSONObject body = new JSONObject();
+                body.put("p_token", token);
+                if (!since.isEmpty()) body.put("p_since", since);
+                JSONObject resp = post("app_pull_changes", body);
+                changed = stock.applyRemote(rows(resp.optJSONArray("rows")), db);
+                String now = resp.optString("now", "");
+                if (!now.isEmpty()) prefs.edit().putString(SINCE, now).apply();
+                lastPull = System.currentTimeMillis();
+                ok = true;
+                msg = changed > 0 ? "Received " + changed + " change(s) from the website." : "Up to date.";
+            } catch (SyncError e) {
+                msg = e.getMessage();
+            } catch (Exception e) {
+                msg = "No internet connection – will keep trying.";
+            }
+            running = false;
+            final boolean fOk = ok;
+            final int fChanged = changed;
+            String stamp = new java.text.SimpleDateFormat("d MMM HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+            prefs.edit().putString("last", (fOk ? "✓ " : "✗ ") + stamp + " – " + msg).apply();
+            main.post(() -> {
+                if (fChanged > 0 && onRemoteChanged != null) onRemoteChanged.run();
+                if (onStatus != null) onStatus.run();
             });
         }).start();
     }
