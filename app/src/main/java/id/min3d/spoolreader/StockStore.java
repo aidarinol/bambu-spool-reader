@@ -45,9 +45,11 @@ public final class StockStore {
 
     private static final String PREF_QTY = "stock_qty";
     private static final String PREF_CUSTOM = "stock_custom";
+    /** Counts changed on this phone that the website database has not confirmed yet (key -> qty). */
+    private static final String PREF_DIRTY = "stock_dirty";
     private static final String CSV_HEADER = "key,type,name,code,colors,qty";
 
-    private final SharedPreferences qty, custom;
+    private final SharedPreferences qty, custom, dirty;
 
     /** Called after every change to the counts (used for the automatic website sync). */
     public Runnable onChange;
@@ -59,6 +61,7 @@ public final class StockStore {
     public StockStore(Context ctx) {
         qty = ctx.getSharedPreferences(PREF_QTY, Context.MODE_PRIVATE);
         custom = ctx.getSharedPreferences(PREF_CUSTOM, Context.MODE_PRIVATE);
+        dirty = ctx.getSharedPreferences(PREF_DIRTY, Context.MODE_PRIVATE);
     }
 
     public int get(String key) {
@@ -67,7 +70,9 @@ public final class StockStore {
 
     /** Overwrites the old count. */
     public void set(String key, int n) {
-        qty.edit().putInt(key, Math.max(0, Math.min(9999, n))).apply();
+        n = Math.max(0, Math.min(9999, n));
+        qty.edit().putInt(key, n).apply();
+        dirty.edit().putInt(key, n).apply();
         changed();
     }
 
@@ -78,6 +83,9 @@ public final class StockStore {
 
     /** Sets every count to 0 (the list of filaments itself stays). */
     public void resetAll() {
+        SharedPreferences.Editor d = dirty.edit();
+        for (Map.Entry<String, ?> e : qty.getAll().entrySet()) d.putInt(e.getKey(), 0);
+        d.apply();
         qty.edit().clear().apply();
         changed();
     }
@@ -191,6 +199,10 @@ public final class StockStore {
 
     /** Replaces the current stock with the backup (overwrite, like manual input). */
     public void apply(Backup b) {
+        SharedPreferences.Editor d = dirty.edit();
+        for (Map.Entry<String, ?> e : qty.getAll().entrySet()) d.putInt(e.getKey(), 0);
+        for (Map.Entry<String, Integer> e : b.qty.entrySet()) d.putInt(e.getKey(), Math.max(0, e.getValue()));
+        d.apply();
         SharedPreferences.Editor q = qty.edit().clear();
         for (Map.Entry<String, Integer> e : b.qty.entrySet()) if (e.getValue() > 0) q.putInt(e.getKey(), e.getValue());
         q.apply();
@@ -198,6 +210,85 @@ public final class StockStore {
         for (Map.Entry<String, String> e : b.custom.entrySet()) c.putString(e.getKey(), e.getValue());
         c.apply();
         changed();
+    }
+
+    // ---------------- two-way website sync ----------------
+
+    /** One row as stored in the website database. */
+    public static final class Remote {
+        public final String key, type, name, code;
+        public final List<String> colors;
+        public final int qty;
+
+        public Remote(String key, String type, String name, String code, List<String> colors, int qty) {
+            this.key = key;
+            this.type = type;
+            this.name = name;
+            this.code = code;
+            this.colors = colors;
+            this.qty = qty;
+        }
+    }
+
+    /** Local changes not yet confirmed by the database. */
+    public Map<String, Integer> dirty() {
+        Map<String, Integer> out = new HashMap<>();
+        for (Map.Entry<String, ?> e : dirty.getAll().entrySet())
+            if (e.getValue() instanceof Integer) out.put(e.getKey(), (Integer) e.getValue());
+        return out;
+    }
+
+    /** Marks every filament as changed (used once, for the first full upload of the new two-way sync). */
+    public void markAllDirty(ColorDb db) {
+        SharedPreferences.Editor d = dirty.edit();
+        for (List<Item> l : grouped(db).values()) for (Item it : l) if (it.qty > 0) d.putInt(it.key, it.qty);
+        d.apply();
+    }
+
+    /** Forgets the pushed changes, unless the count was changed again while the upload was running. */
+    public void confirmPushed(Map<String, Integer> pushed) {
+        Map<String, Integer> now = dirty();
+        SharedPreferences.Editor d = dirty.edit();
+        for (Map.Entry<String, Integer> e : pushed.entrySet()) {
+            Integer cur = now.get(e.getKey());
+            if (cur != null && cur.intValue() == e.getValue().intValue()) d.remove(e.getKey());
+        }
+        d.apply();
+    }
+
+    /**
+     * Takes the counts from the website database (changes made on min3dstudio.com, or on another phone).
+     * Counts this phone changed but has not uploaded yet are kept. Does not trigger a new upload.
+     * @return number of filaments whose count changed on this phone
+     */
+    public int applyRemote(List<Remote> rows, ColorDb db) {
+        java.util.Set<String> known = new java.util.HashSet<>();
+        if (db != null) for (ColorDb.Row r : db.stockRows()) known.add(r.stockKey);
+        Map<String, Integer> pend = dirty();
+        SharedPreferences.Editor q = qty.edit();
+        SharedPreferences.Editor c = custom.edit();
+        int changedN = 0;
+        for (Remote r : rows) {
+            if (r.key == null || r.key.isEmpty() || pend.containsKey(r.key)) continue;
+            if (!known.contains(r.key) && !custom.contains(r.key))
+                c.putString(r.key, r.type + "\t" + r.name + "\t" + join(r.colors, ","));
+            int n = Math.max(0, Math.min(9999, r.qty));
+            if (get(r.key) != n) {
+                if (n == 0) q.remove(r.key);
+                else q.putInt(r.key, n);
+                changedN++;
+            }
+        }
+        q.apply();
+        c.apply();
+        return changedN;
+    }
+
+    /** Item details for an upload (type, name, code, colours) by key. */
+    public Map<String, Item> byKey(ColorDb db) {
+        Map<String, Item> m = new HashMap<>();
+        for (List<Item> l : grouped(db).values()) for (Item it : l) m.put(it.key, it);
+        return m;
     }
 
     // ---------------- helpers ----------------

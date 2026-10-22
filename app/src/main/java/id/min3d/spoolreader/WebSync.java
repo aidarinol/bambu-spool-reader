@@ -5,23 +5,33 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Sends the in-stock filament list to the min3dstudio.com database (Supabase), so the website
- * only offers colours that are actually in stock. Only colour names, hex codes and spool counts
- * are sent. The upload needs a sync token (entered once in the app); without it nothing is sent.
+ * Two-way stock sync with the min3dstudio.com database (Supabase). The database is the shared stock list:
+ * the owner can change counts on the website too.
+ * <ul>
+ *   <li>First run of this version: the whole stock on this phone is uploaded once (the phone was the only
+ *       source until now). After that the old one-way sync is refused by the server.</li>
+ *   <li>After that: only counts changed on this phone are uploaded, then the latest list is downloaded.
+ *       Counts changed on this phone but not uploaded yet always win over the download.</li>
+ * </ul>
+ * Needs the sync token (entered once in the app); without it nothing is sent or received.
  */
 public final class WebSync {
 
-    static final String URL_RPC = "https://kjsigfesocabfdckehwo.supabase.co/rest/v1/rpc/sync_filament_stock";
+    static final String BASE = "https://kjsigfesocabfdckehwo.supabase.co/rest/v1/rpc/";
     static final String API_KEY = "sb_publishable_UHJzxe3h3Vyuu23nKAKDqw_gfsB_-3U"; // public key, safe to ship
 
     public interface Callback {
@@ -29,9 +39,15 @@ public final class WebSync {
     }
 
     private static final String PREF = "web_sync";
+    private static final String FULL_DONE = "two_way_full_done";
     private final SharedPreferences prefs;
     private final Handler main = new Handler(Looper.getMainLooper());
     private Runnable pending;
+    private volatile boolean running;
+    private long lastPull;
+
+    /** Runs on the main thread after the download changed counts on this phone (refresh the screen). */
+    public Runnable onRemoteChanged;
 
     public WebSync(Context ctx) {
         prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
@@ -58,9 +74,11 @@ public final class WebSync {
         return prefs.getBoolean("pending", false);
     }
 
-    /** Called when the app comes to the foreground: resend if an earlier sync did not get through. */
-    public void retryIfPending(StockStore stock, ColorDb db) {
-        if (hasToken() && db != null && pending() && pending == null) syncNow(stock, db, null);
+    /** App came to the foreground: upload what is pending and download the latest list (at most every 15 s). */
+    public void onForeground(StockStore stock, ColorDb db) {
+        if (!hasToken() || db == null || pending != null) return;
+        if (System.currentTimeMillis() - lastPull < 15000 && !pending()) return;
+        syncNow(stock, db, null);
     }
 
     /** Debounced automatic sync after stock edits (3 s after the last change). */
@@ -75,89 +93,139 @@ public final class WebSync {
         main.postDelayed(pending, 3000);
     }
 
-    public void syncNow(StockStore stock, ColorDb db, final Callback cb) {
+    public void syncNow(final StockStore stock, final ColorDb db, final Callback cb) {
         final String token = token();
         if (token.isEmpty()) {
             if (cb != null) cb.done(false, "No website token set.");
             return;
         }
-        final String body = payload(token, stock.grouped(db));
+        if (db == null) {
+            if (cb != null) cb.done(false, "Colour database missing.");
+            return;
+        }
+        if (running) { // one sync at a time; try again shortly
+            main.postDelayed(() -> syncNow(stock, db, cb), 1500);
+            return;
+        }
+        running = true;
+        final boolean full = !prefs.getBoolean(FULL_DONE, false);
+        if (full) stock.markAllDirty(db);
+        final Map<String, Integer> push = stock.dirty();
+        final Map<String, StockStore.Item> info = stock.byKey(db);
         new Thread(() -> {
             boolean ok = false;
             String msg;
-            HttpURLConnection c = null;
+            int changed = 0;
             try {
-                c = (HttpURLConnection) new URL(URL_RPC).openConnection();
-                c.setRequestMethod("POST");
-                c.setConnectTimeout(15000);
-                c.setReadTimeout(20000);
-                c.setDoOutput(true);
-                c.setRequestProperty("apikey", API_KEY);
-                c.setRequestProperty("Content-Type", "application/json");
-                byte[] b = body.getBytes(StandardCharsets.UTF_8);
-                try (OutputStream o = c.getOutputStream()) {
-                    o.write(b);
+                JSONObject resp;
+                if (full || !push.isEmpty()) {
+                    JSONObject body = new JSONObject();
+                    body.put("p_token", token);
+                    body.put("p_items", items(push, info));
+                    body.put("p_full", full);
+                    resp = post("app_push_stock", body);
+                } else {
+                    JSONObject body = new JSONObject();
+                    body.put("p_token", token);
+                    resp = post("app_pull_stock", body);
                 }
-                int code = c.getResponseCode();
-                String resp = read(code < 400 ? c.getInputStream() : c.getErrorStream());
-                ok = code >= 200 && code < 300;
-                if (ok) msg = "Website updated: " + resp;
-                else if (resp.contains("token")) msg = "Website token is wrong.";
-                else msg = "Website sync failed (HTTP " + code + ").";
+                stock.confirmPushed(push);
+                if (full) prefs.edit().putBoolean(FULL_DONE, true).apply();
+                changed = stock.applyRemote(rows(resp.optJSONArray("rows")), db);
+                lastPull = System.currentTimeMillis();
+                ok = true;
+                int up = push.size();
+                msg = full ? "First full upload done – stock is now shared with min3dstudio.com."
+                        : (up > 0 ? "Sent " + up + " change(s)" : "Up to date")
+                        + (changed > 0 ? ", received " + changed + " change(s) from the website" : "") + ".";
+            } catch (SyncError e) {
+                msg = e.getMessage();
             } catch (Exception e) {
                 msg = "No internet connection – website not updated.";
-            } finally {
-                if (c != null) c.disconnect();
             }
+            running = false;
             final boolean fOk = ok;
             final String fMsg = msg;
+            final int fChanged = changed;
             String stamp = new java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.US).format(new java.util.Date());
             prefs.edit().putString("last", (fOk ? "✓ " : "✗ ") + stamp + " – " + fMsg + (fOk ? "" : " (retried automatically when the app is opened again)"))
-                    .putBoolean("pending", !fOk).apply();
-            if (cb != null) main.post(() -> cb.done(fOk, fMsg));
+                    .putBoolean("pending", !fOk || !stock.dirty().isEmpty()).apply();
+            main.post(() -> {
+                if (fChanged > 0 && onRemoteChanged != null) onRemoteChanged.run();
+                if (cb != null) cb.done(fOk, fMsg);
+            });
         }).start();
     }
 
-    static String payload(String token, Map<String, List<StockStore.Item>> groups) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"p_token\":").append(q(token)).append(",\"p_items\":[");
-        boolean first = true;
-        for (List<StockStore.Item> l : groups.values()) {
-            for (StockStore.Item it : l) {
-                if (it.qty <= 0) continue;
-                if (!first) sb.append(',');
-                first = false;
-                sb.append("{\"key\":").append(q(it.key))
-                        .append(",\"type\":").append(q(it.type))
-                        .append(",\"name\":").append(q(it.name))
-                        .append(",\"code\":").append(q(it.code))
-                        .append(",\"qty\":").append(it.qty)
-                        .append(",\"colors\":[");
-                for (int i = 0; i < it.colors.size(); i++) {
-                    if (i > 0) sb.append(',');
-                    sb.append(q(it.colors.get(i)));
-                }
-                sb.append("]}");
-            }
+    private static final class SyncError extends Exception {
+        SyncError(String m) {
+            super(m);
         }
-        return sb.append("]}").toString();
     }
 
-    private static String q(String s) {
-        if (s == null) return "null";
-        StringBuilder b = new StringBuilder("\"");
-        for (char ch : s.toCharArray()) {
-            if (ch == '"' || ch == '\\') b.append('\\').append(ch);
-            else if (ch < 0x20) b.append(String.format("\\u%04x", (int) ch));
-            else b.append(ch);
+    static JSONArray items(Map<String, Integer> push, Map<String, StockStore.Item> info) throws Exception {
+        JSONArray a = new JSONArray();
+        for (Map.Entry<String, Integer> e : push.entrySet()) {
+            StockStore.Item it = info.get(e.getKey());
+            JSONObject o = new JSONObject();
+            o.put("key", e.getKey());
+            o.put("qty", e.getValue());
+            if (it != null) {
+                o.put("type", it.type);
+                o.put("name", it.name);
+                o.put("code", it.code);
+                JSONArray c = new JSONArray();
+                for (String s : it.colors) c.put(s);
+                o.put("colors", c);
+            }
+            a.put(o);
         }
-        return b.append('"').toString();
+        return a;
+    }
+
+    static List<StockStore.Remote> rows(JSONArray a) {
+        List<StockStore.Remote> out = new ArrayList<>();
+        if (a == null) return out;
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject o = a.optJSONObject(i);
+            if (o == null) continue;
+            List<String> cols = new ArrayList<>();
+            JSONArray c = o.optJSONArray("colors");
+            if (c != null) for (int k = 0; k < c.length(); k++) cols.add(c.optString(k));
+            out.add(new StockStore.Remote(o.optString("key"), o.optString("type", "Other"), o.optString("name", "?"),
+                    o.optString("code", ""), cols, o.optInt("qty", 0)));
+        }
+        return out;
+    }
+
+    private static JSONObject post(String fn, JSONObject body) throws Exception {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(BASE + fn).openConnection();
+            c.setRequestMethod("POST");
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(25000);
+            c.setDoOutput(true);
+            c.setRequestProperty("apikey", API_KEY);
+            c.setRequestProperty("Content-Type", "application/json");
+            byte[] b = body.toString().getBytes(StandardCharsets.UTF_8);
+            try (OutputStream o = c.getOutputStream()) {
+                o.write(b);
+            }
+            int code = c.getResponseCode();
+            String resp = read(code < 400 ? c.getInputStream() : c.getErrorStream());
+            if (code >= 200 && code < 300) return new JSONObject(resp);
+            if (resp.contains("token")) throw new SyncError("Website token is wrong.");
+            throw new SyncError("Website sync failed (HTTP " + code + ").");
+        } finally {
+            if (c != null) c.disconnect();
+        }
     }
 
     private static String read(InputStream in) throws java.io.IOException {
         if (in == null) return "";
         ByteArrayOutputStream o = new ByteArrayOutputStream();
-        byte[] buf = new byte[2048];
+        byte[] buf = new byte[4096];
         int n;
         while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
         in.close();
